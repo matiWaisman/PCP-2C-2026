@@ -272,3 +272,177 @@ Que los ciclos de `T1` y `T2` terminen dependen del orden en el que ejecute los 
 |               | `n = tmp - 1` | `n=0; q:q1`       |
 
 Esto haria que ni `T1` ni `T2` terminen. 
+
+# Ejercicio 8
+## Punto A 
+Los posibles valores de n pueden ir desde 0 hasta el menos infinito. 
+
+Los valores del programa pueden valer entre -1 y menos infinito, en caso de que se empiece ejecutando el segundo thread y si la condicion de `n ==0` requiere de dos pasos, el primero en el que se lee el valor de la variable compartida `n` y se guarda en una variable local, y otro en el que se efectua el if, en el medio el scheduler puede poner a correr al otro proceso y mientras tanto disminuye el valor global de `n`. Otra posibilidad sea que el scheduler corte al segundo thread justo antes de poner la flag en falso o durante algun paso no atomico. 
+
+## Punto B 
+La ejecucion del programa puede no terminar en caso de que se actualize el valor de `n` antes de que se llegue a la primera lectura de `n` dentro del segundo thread. En ese caso el programa nunca va a terminar. 
+
+# Ejercicio 9 
+Para ver si un algoritmo resuelve el problema de la exclusion mutua lo que hay que comprobar es que cumpla con las siguientes tres propiedades: 
+
+- Mutex: en todo momento, a lo sumo un thread está en la sección crítica.
+- Ausencia de deadlock/livelock: no puede darse una situación donde el sistema quede trabado y ningún thread que quiere entrar a la sección crítica pueda progresar (ni bloqueado esperando indefinidamente, ni dando vueltas sin avanzar).
+- Garantía de entrada: todo thread que quiere entrar a la sección crítica, eventualmente entra (no puede quedar postergado para siempre, incluso si otros threads sí logran entrar repetidamente).
+
+Este algoritmo no cumple con la primer propiedad, ambos threads pueden estar en la seccion critica simultanteamente. Como las lineas `np = nq + 1` y `nq = np + 1` no son atomicas y minimo requieren de dos pasos, uno en el que se lee el valor de la variable compartida y otro en el que se escribe el valor nuevo en la variable compartida, puede ocurrir que ambos lleguen a la linea del `while` con el mismo numero de prioridad, haciendo que ninguno se quede loopeando y logrando que ambos entren a la seccion critica a la vez y ninguno se quede loopeando. Ya que no se van a cumplir las condiciones para tener que esperar porque la prioridad del otro va a ser distinta a cero y tampoco se cumple que uno tiene mayor prioridad que el otro, ya que tienen la misma. 
+
+Si separamos el codigo en las siguientes operaciones atomicas: 
+
+```
+global np = 0
+global nq = 0
+
+thread p                          thread q
+  while(true){                      while(true){
+p1:   tmp_p = nq                q1:     tmp_q = np
+p2:   np = tmp_p + 1            q2:     nq = tmp_q + 1
+p3:   while (nq != 0            q3:     while (np != 0
+          && np > nq) {}                    && nq > np) {}
+p4:   // seccion critica        q4:     // seccion critica
+p5:   np = 0                    q5:     nq = 0
+  }                                  }
+```
+
+Llegamos a un interleaving en el que ambos threads estan en la zona critica a la vez:
+
+| p                                    | q                                    | Estado              |
+|--------------------------------------|--------------------------------------|---------------------|
+| `tmp_p = nq`                         |                                      | `p.tmp_p = 0; p:p2` |
+|                                      | `tmp_q = np`                         | `q.tmp_q = 0; q:q2` |
+| `np = tmp_p + 1`                     |                                      | `np = 1; p:p3`      |
+|                                      | `nq = tmp_q + 1`                     | `nq = 1; q:q3`      |
+| `while (nq != 0 && np > nq)` (false) |                                      | `p:p4`              |
+|                                      | `while (np != 0 && nq > np)` (false) | `q:q4`              |
+| `p4`                                 |                                      | `p:p5`              |
+|                                      | `q4`                                 | `q:q5`              |
+
+# Ejericicio 10 
+## Punto A 
+
+En este algoritmo no se cumple la propiedad de Mutex, si varios procesos primero leen `local turno = turnos` `turno` va a tener valor cero y luego es reemplazado por el scheduler por otro proceso este tambien va a tener el turno cero, luego ambos van a entrar a la seccion critica a la vez. 
+
+Si nuestro codigo es: 
+```
+global actual = 0
+global turnos = 0
+
+PedirTurno(){
+n1:   local turno = turnos
+n2:   turnos = turnos + 1
+n3:   return turno
+}
+
+LiberarTurno(){
+n4:   actual = actual + 1
+n5:   turnos = turnos - 1
+}
+
+//SECCION NO CRITICA
+n6:   local miturno = PedirTurno()
+n7:   while (actual != miturno) {}
+n8:   //SECCION CRITICA
+n9:   LiberarTurno()
+      //SECCION NO CRITICA
+```
+
+
+| p                              | q                              | r                              | Estado                            |
+|--------------------------------|--------------------------------|--------------------------------|-----------------------------------|
+| `local miturno = PedirTurno()` |                                |                                | `p:p1`                            |
+| `local turno = turnos`         |                                |                                | `p.turno = 0; p:p2`               |
+|                                | `local miturno = PedirTurno()` |                                | `q:q1`                            |
+|                                | `local turno = turnos`         |                                | `q.turno = 0; q:q2`               |
+|                                |                                | `local miturno = PedirTurno()` | `r:r1`                            |
+|                                |                                | `local turno = turnos`         | `r.turno = 0; r:r2`               |
+| `turnos = turnos + 1`          |                                |                                | `turnos = 1; p.miturno = 0; p:p3` |
+|                                | `turnos = turnos + 1`          |                                | `turnos = 2; q.miturno = 0; q:q3` |
+|                                |                                | `turnos = turnos + 1`          | `turnos = 3; r.miturno = 0; r:r3` |
+| `while (actual != miturno)`    |                                |                                | `p:p8`                            |
+|                                | `while (actual != miturno)`    |                                | `q:q8`                            |
+|                                |                                | `while (actual != miturno)`    | `r:r8`                            |
+| `p8`                           |                                |                                | `p:p9`                            |
+|                                | `q8`                           |                                | `q:q9`                            |
+|                                |                                | `r8`                           | `r:r9`                            |
+
+## Punto B 
+Si `PedirTurno` y `LiberarTurno` fueran atomicas, nunca podria ocurrir que varios procesos tengan el mismo turno. Por lo que la propiedad de mutex se cumple. Y la propiedad de ausencia de Deadlock se va a cumplir porque siempre para algun proceso se va a cumplir que `actual` va a ser igual a su turno. Tambien se va a cumplir la garantia de entrada asumiendo que en la seccion critica ningun thread se puede bloquear, haciendo que no avance el turno. 
+
+# Ejercicio 11
+En el algoritmo propuesto no se cumple mutex. Si tenemos por ejemplo 4 threads y tanto el primero como el tercero encienden su flag y van al `while` a ver si pueden entrar o no a la seccion critica, como ni el thread 2 ni el 4 encendieron sus flags, la condicion `flag [otro]` va a ser falsa, por lo que los dos pueden entrar al ciclo a la vez. 
+
+Siendo el codigo: 
+
+```
+global flag[n] = {false, false, ..., false}
+global turno = 0
+
+thread(id) {
+      //SECCION NO CRITICA
+n1:   flag[id] = true
+n2:   local otro = (id + 1) % n
+n3:   turno = otro
+n4:   while (flag[otro] && turno == otro) {}
+n5:   //SECCION CRITICA
+n6:   flag[id] = false
+      //SECCION NO CRITICA
+}
+```
+
+| p                                        | q | r                                        | s | Estado                                |
+|------------------------------------------|---|------------------------------------------|---|---------------------------------------|
+| `flag[id] = true`                        |   |                                          |   | `flag=[true,false,false,false]; p:p2` |
+| `local otro = (id + 1) % n`              |   |                                          |   | `p.otro = 1; p: p3`                   |
+| `turno = otro`                           |   |                                          |   | `turno = 1; p: p4`                    |
+|                                          |   | `flag[id] = true`                        |   | `flag=[true,false,true,false]; r:r2`  |
+|                                          |   | `local otro = (id + 1) % n`              |   | `r.otro = 3; r: r3`                   |
+|                                          |   | `turno = otro`                           |   | `turno = 3; r: r4`                    |
+| `flag[id] = true`                        |   |                                          |   | `flag=[true,false,false,false]; p:p2` |
+| `while (flag[otro] && turno == otro) {}` |   |                                          |   | `p:p5`                                |
+| `p5`                                     |   |                                          |   | `p:p6`                                |
+|                                          |   | `while (flag[otro] && turno == otro) {}` |   | `r:r5`                                |
+|                                          |   | `r5`                                     |   | `r:r6`                                |
+
+No pueden ocurrir ni deadlock ni imposibilidad de entrada a un thread en particular. 
+
+Como mucho puede quedarse esperando un unico thread a la vez, el que coincida su id con el anterior a el que fue el ultimo en sobreescribir `turno`. Pero una vez que termine (asumiendo que siempre termina la seccion critica) tambien va a poder entrar. 
+
+# Ejercicio 12 
+## Punto A
+El algoritmo no resuelve el problema de exlusion mutua porque puede ocurrir un Deadlock. 
+
+Si al menos dos procesos setean su flag en True antes de que el primero entre a la seccion critica, ambos van a quedarse trabados en el while, luego todos los demas que quieran entrar tambien se van a quedar stuckeados en el while. Como ocurre deadlock tambien puede ocurrir procesos no puedan entrar nunca. 
+
+Lo que si cumple el algoritmo es mutex. 
+
+Supongamos, por absurdo, que `p` y `q` entran a la sección crítica "a la vez". Para que eso pase, la llamada a `algunVerdadero(p)` que hace `p` tiene que devolver `false` (en particular, en algún instante $t_{p2}$ lee `flag[q]` y la ve en `false`), y análogamente `algunVerdadero(q)` tiene que devolver `false` (en algún instante $t_{q2}$ lee `flag[p]` y la ve en `false`).
+
+Pero sabemos:
+- $t_{p1}$ (cuando `p` hace `flag[p] = true`) es anterior a $t_{p2}$ (la lectura de `flag[q]` durante el scan de `p`), porque `p` primero setea su propia flag y recién después arranca el while.
+- Análogamente, $t_{q1} < t_{q2}$.
+
+Para que `p` no vea a `q`, hace falta $t_{p2} < t_{q1}$ (p lee antes de que q escriba). Para que `q` no vea a `p`, hace falta $t_{q2} < t_{p1}$.
+
+Encadenando todo: $t_{p2} < t_{q1} < t_{q2} < t_{p1} < t_{p2}$ — un ciclo, absurdo. Entonces es imposible que ambos scans devuelvan `false` simultáneamente respecto del otro. Por lo tanto, no pueden estar los dos en la sección crítica a la vez.
+
+## Punto B 
+Si `algunVerdadero` fuera atomico, aun asi se puede producir el deadlock si mas de un proceso setea su flag en true antes que el siguiente entre a la seccion critica. 
+
+# Ejercicio 13 
+TODO 
+Dice que hay que eliminar un `j < id` y no hay ninguno en el codigo. Y difiere mucho vs el bakery de la teorica. 
+
+# Ejercicio 14 
+El codigo no cumple con la ausencia de deadlocks, por lo que no cumple exclusion mutua. El problema esta en el uso de la variable compartida `turno`. En caso de que a un thread se le asigne un ticket mayor a cero, nunca va a poder pasar del while `while ( turno != miturno ) {}` porque turno siempre vale cero. Esto puede ocurrir facilmente si un primer thread ejecuta el primer `fetch-and-add`, en ese caso su turno va a ser el 0 y el ticket va a valer 1. Luego, todo proceso que llame a `fetch-and-add` antes de que el primer thread salga de la seccion critica se le va a asignar un ticket distinto a cero, por lo que va a quedar bloqueado. 
+
+Para arreglarlo, lo que habria que hacer es reemplazar la linea antes de la seccion critica por `fetch-and-add(turno, miturno, 1)`. De esta manera, cuando un proceso sale de la seccion critica, mueve el turno hacia arriba permitiendo ejecutar al siguiente thread. Como el `fetch-and-add` es atomico, no puede ocurrir que dos threads tengan el mismo turno. 
+
+TODO Demo mas rigurosa de porque cumple todo 
+
+# Ejercicio 15
+
+
