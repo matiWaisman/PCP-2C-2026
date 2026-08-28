@@ -444,5 +444,53 @@ Para arreglarlo, lo que habria que hacer es reemplazar la linea antes de la secc
 TODO Demo mas rigurosa de porque cumple todo 
 
 # Ejercicio 15
+## Punto A
+Si la operacion `tomarFlag` no es atomica, la propuesta anterior no resuelve el problema de la exclusión mutua. La solución propuesta no cumple con no tener deadlock. 
+
+Como la línea `flag[mia] = !flag[otro]` no es atomica y requiere por lo menos dos instrucciones, uno de leer el valor del array y otro para actualizarlo. Esto puede hacer que ambos seteen su flag como verdadero si el otro tambien tiene en falso su flag. 
+
+Si descomponemos el codigo en: 
+```
+global flag[0..1]={false, false}
+
+
+tomarFlag (mia , otro ) {
+n1:    local otro = flag[otro]
+n2:    flag [mia] = !otro
+}
+
+thread T0 {
+n3: while (!flag [0]){
+n4:     tomarFlag (0 ,1)
+    }
+n5: // SECCION CRITICA
+n6: flag [0]= false
+}
+```
+
+Podemos armar una traza como: 
+
+| p                         | q                         | Estado                        |
+|---------------------------|---------------------------|-------------------------------|
+| `while (!flag[0])`        |                           | `flag = [false, false]; p:p4` |
+| `tomarFlag(0,1)`          |                           | `p:p2`                        |
+|                           | `while (!flag[1])`        | `flag = [false, false]; q:q4` |
+|                           | `tomarFlag(1,0)`          | `q:q2`                        |
+| `local otro = flag[otro]` |                           | `p.otro = 0; p:p3`            |
+|                           | `local otro = flag[otro]` | `q.otro = 0; q:q3`            |
+| `flag[mia] = !otro`       |                           | `flag=[true,false]; p:p5`     |
+|                           | `flag[mia] = !otro`       | `flag=[true,true]; q:q5`      |
+| `while (!flag[0])`        |                           | `flag = [true, true]; p:p5`   |
+|                           | `while (!flag[1])`        | `flag = [true, true]; q:q5`   |
+| `p5`                      |                           | `p:p6`                        |
+|                           | `q5`                      | `q:q6`                        |
+
+Entonces en este interleaving los dos threads entran en la seccion critica a la vez. 
+
+## Punto B 
+Si `tomarFlag` fuera atomica, no puede ocurrir un interleaving como el anterior, porque siempre exactamente un thread va a ganar la carrera y va a setear su bandera en true, y como va a ser el primero el anterior va a quedar en false. 
+
+
+
 
 
