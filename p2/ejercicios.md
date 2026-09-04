@@ -214,3 +214,146 @@ El orden importa en ambas puntas. Al principio, primero se ocupa la máquina y r
 Este orden fijo de adquisición —siempre máquina antes que discos— es lo que evita el deadlock: como todos los clientes piden los recursos en el mismo orden, no puede darse una espera circular donde un cliente tenga la máquina esperando discos mientras otro tiene discos esperando esa misma máquina.
 
 Con lo que si hay que tener cuidado es con la obtencion de los discos, si es atomica haciendo un `acquires(cantDiscosNecesarias)` no va a haber problema, pero si se hace con un ciclo de `acquires` puede haber un deadlock. Un caso puede ser que dos personas quieren usar maquinas distintas que ambas estan vacias, si cada uno necesita 3 discos y hay 3 disponibles, puede ocurrir que cada uno agarre 2 y sea interrumpido y el otro agarre un disco y se queden en deadlock. 
+
+
+## Punto B
+El codigo está en [ej7.java](./ej7.java)
+
+## Punto C 
+En caso de que todo el tiempo llegue gente a una maquina que un usuario este esperando, y "tenga mala suerte" una persona no podría usar nunca una maquina. Para solucionar esto podriamos hacer que el semaforo sea fuerte y simule una fila, algo que es razonable en un gimnasio. 
+
+Otro problema que puede haber puede ser a la hora de agarrar discos, si hay pocos discos y las 4 personas se estan peleando por usar los pocos discos que hay, tambien podria hacer que una persona que ya es su turno en la maquina puede llegar a tener "mala suerte" y nunca pueda agarrar discos para la maquina, porque siempre les roba los discos otro, para solucionar esto tambien podemos hacer que el semaforo sea fuerte, y nuevamente tenemos otra fila para agarrar discos. 
+
+# Ejercicio 8 
+TODO 
+
+# Ejercicio 9 
+## Punto A 
+
+```
+global semaphore s0 = Semaphore(1)
+global semaphore s1 = Semaphore(0)
+global semaphore[2] s = [s0, s1]
+global int constaActual = 0
+global int capacidadTransbordador = N
+
+thread transbordador(){
+
+}
+
+thread persona(int costa){
+    s[costa].acquire()
+
+}
+```
+
+# Ejercicio 11 
+## Punto A 
+```
+global int personasEnElBaño = 0
+
+global semaphore mutexPB = Semaphore(1)
+global semaphore baños = Semaphore(8)
+global semaphore acceso = Semaphore(1)
+
+
+thread persona(){
+    mutexPB.acquire()
+    personasEnElBaño += 1
+    if(personasEnElBaño == 1){
+        acceso.acquire()
+    }
+    mutexPB.release()
+    baños.acquire()
+    print("Haciendo pichin")
+    baños.release()
+    mutexPB.acquire()
+    personasEnElBaño -= 1 
+    if(personasEnElBaño == 0){
+        acceso.release()
+    }
+    mutexPB.release()
+}
+
+thread limpieza(){
+    acceso.acquire()
+    print("Limpiando")
+    acceso.release()
+}
+```
+
+## Punto B 
+Si el prioridad de limpieza tiene prioridad, lo que podemos hacer es agregar un molinete FIFO, que hace que nadie pueda entrar al baño si esta el personal de limpieza esperando, por lo que cuando llega el personal de limpieza va a esperar a que todos los que esten adentro terminen y despues va a entrar el. 
+
+```
+global int personasEnElBaño = 0
+
+global semaphore molinete = Semaphore(1, True)
+global semaphore mutexPB = Semaphore(1)
+global semaphore baños = Semaphore(8)
+global semaphore acceso = Semaphore(1)
+
+
+thread persona(){
+    molinete.acquire()
+    molinete.release()
+    mutexPB.acquire()
+    personasEnElBaño += 1
+    if(personasEnElBaño == 1){
+        acceso.acquire()
+    }
+    mutexPB.release()
+    baños.acquire()
+    print("Haciendo pichin")
+    baños.release()
+    mutexPB.acquire()
+    personasEnElBaño -= 1 
+    if(personasEnElBaño == 0){
+        acceso.release()
+    }
+    mutexPB.release()
+}
+
+thread limpieza(){
+    molinete.acquire()
+    acceso.acquire()
+    print("Limpiando")
+    molinete.release()
+    acceso.release()
+}
+```
+
+## Punto C
+```
+global int personasEnElBaño = 0
+
+global semaphore mutexPB = Semaphore(1)
+global semaphore baños = Semaphore(8)
+global semaphore acceso = Semaphore(1)
+global semaphore molinete = Semaphore(1, True)
+
+
+thread persona(){
+    mutexPB.acquire()
+    personasEnElBaño += 1
+    if(personasEnElBaño == 1){
+        acceso.acquire()
+    }
+    mutexPB.release()
+    baños.acquire()
+    print("Haciendo pichin")
+    baños.release()
+    mutexPB.acquire()
+    personasEnElBaño -= 1 
+    if(personasEnElBaño == 0){
+        acceso.release()
+    }
+    mutexPB.release()
+}
+
+thread limpieza(){
+    acceso.acquire()
+    print("Limpiando")
+    acceso.release()
+}
+```
