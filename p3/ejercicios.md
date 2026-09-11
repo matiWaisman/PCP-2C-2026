@@ -682,3 +682,162 @@ monitor Juego(String palabra) {
     }
 }
 ```
+
+# Ejercicio 8
+Asumo que la barra no tiene un tamaño acotado en el que por ejemplo el pizzero no puede poner mas de `n` pizzas. 
+
+Para modelarlo, vamos a usar un solo monitor que va a ser la barra, que va a tener para los clientes el metodo `tomarComida` que va a ver que pizzas hay en la barra, si hay una grande va a tomar esa pizza grande, y si no va a tomar dos chicas. Si no hay ni dos chicas ni una grande va a esperar a que haya alguna de las dos combinaciones. 
+El pizzero va a interactuar con el monitor por medio de dos metodos, `depositarGrande` que va a representar que pone una grande en la barra y avisa que ya hay una grande para que se peleen los comensales a agarrarla y el metodo `depositarChica` que en caso de que hayan despues de eso al menos dos chicas va a avisarles a todos que hay suficientes pizzas para que agarren. 
+
+```java 
+monitor Barra(){
+    int cantidadGrandes = 0;
+    int cantidadChicas = 0;
+
+    condition hayPizza; 
+
+    void depositarGrande(){
+        cantidadGrandes += 1; 
+        signalAll(hayPizza);
+    }
+
+    void depositarChica(){
+        cantidadChicas += 1;
+        if(cantidadChicas >= 2){
+            signalAll(hayPizza);
+        }
+    }
+
+    void tomarComida(){
+        while(cantidadGrandes == 0 && cantidadChicas < 2){
+            wait(hayPizza);
+        }   
+        // Si estoy aca es pq al menos hay una de las dos variedades
+        if(cantidadGrandes > 0){
+            // Me llevo una grande 
+            cantidadGrandes -= 1;
+        }
+        else{ // Si o si hay dos chicas
+            cantidadChicas -= 2; 
+        }
+    }
+}
+```
+
+Para que el pizzero no tenga starvation para intentar acceder al monitor, en la interacción de los threads con el monitor se puede usar un esquema de lectores escritores con prioridad del escritor. 
+
+# Ejercicio 9 
+El monitor va a tener los metodos: 
+- `darAutorizacion`
+- `subirseAlBote` 
+- `bajarseDelBote` 
+- `iniciarViaje` 
+- `finalizarViaje` 
+
+```java 
+enum Direccion {
+    NORTE,
+    SUR
+}
+
+monitor Bote(int capacidadMaxima){
+    Direccion costaActual = Direccion.NORTE;
+
+    int cantidadPersonasEnElBote = 0; 
+    bool autorizacion = false; 
+    bool enViaje = false;
+    bool estaDescargandose = false;
+
+    condition terminoDescarga; 
+    condition hayGenteParaPartir;
+    condition llegoCostaNorte;
+    condition llegoCostaSur; 
+    condition hayAutorizacion; 
+
+    void darAutorizacion(){
+        autorizacion = true; 
+        signal(hayAutorizacion);
+    }
+
+    void iniciarViaje(){
+        while(true){
+            if(cantidadPersonasEnElBote < capacidadMaxima){
+                wait(hayGenteParaPartir);
+            }
+            else if(!autorizacion){
+                wait(hayAutorizacion);
+            }
+            else if(estaDescargandose){
+                wait(terminoDescarga);
+            }
+            else{
+                break;
+            }
+        }
+        enViaje = true; 
+    }
+
+    void finalizarViaje(){
+        enViaje = false;
+        autorizacion = false;
+        estaDescargandose = true;
+        if(costaActual == Direccion.SUR){
+            costaActual = Direccion.NORTE;
+            signalAll(llegoCostaNorte);
+        }
+        else{
+            costaActual = Direccion.SUR;
+            signalAll(llegoCostaSur);
+        }
+    }
+
+    void subirseAlBote(Direccion direccionOrigen){
+        while(enViaje || costaActual != direccionOrigen || cantidadPersonasEnElBote == capacidadMaxima || estaDescargandose){
+            if(direccionOrigen == Direccion.NORTE && costaActual == Direccion.SUR){
+                wait(llegoCostaNorte);
+            } 
+            else if(direccionOrigen == Direccion.SUR && costaActual == Direccion.NORTE){
+                wait(llegoCostaSur);
+            } 
+            if(cantidadPersonasEnElBote == capacidadMaxima || estaDescargandose){
+                wait(terminoDescarga);
+            }
+        }
+        // Si estamos aca es pq nos subimos al bote, ya que esta en la misma costa que nosotros y hay lugar
+        cantidadPersonasEnElBote += 1;
+        if(cantidadPersonasEnElBote == capacidadMaxima){
+            signal(hayGenteParaPartir);
+        }
+    }  
+    
+    void bajarseDelBote(){
+        while(enViaje){
+            if(costaActual == Direccion.SUR){
+                wait(llegoCostaNorte);
+            }
+            else{
+                wait(llegoCostaSur);
+            }
+        }
+        // Si estoy aca es pq me baje  
+        cantidadPersonasEnElBote -= 1;
+        if(cantidadPersonasEnElBote == 0){
+            estaDescargandose = false;
+            signalAll(terminoDescarga);
+        }
+    }
+}
+```
+
+## Punto B 
+El modelo del punto anterior no garantiza que las personas suban al bote respetando su orden de llegada. Cuando se despiertan varias personas que están esperando, el orden en el que vuelven a ingresar al monitor depende del scheduler.
+
+Para garantizar un orden FIFO, se puede incorporar un sistema de tickets independiente para cada costa. El monitor tendrá un método `pedirTicket`, que entregará números consecutivos según la costa de origen de la persona. De esta manera, habrá un contador de tickets para la costa norte y otro para la costa sur.
+
+Cuando una persona ejecute `subirseAlBote`, primero deberá esperar hasta que su ticket coincida con el ticket que está siendo atendido en su costa. Además, deberán cumplirse las condiciones originales: el bote debe encontrarse en esa costa, no debe estar viajando ni descargándose y debe tener lugar disponible.
+
+Si el ticket de la persona todavía no está siendo atendido, esta esperará en una variable de condición correspondiente a su costa. Cada vez que una persona suba efectivamente al bote, se incrementará el ticket que debe ser atendido y se realizará un `signalAll` sobre esa variable de condición. Los procesos que despierten volverán a verificar si llegó su turno.
+
+El turno debe incrementarse únicamente después de que la persona haya subido al bote. Todos los pasajeros, incluido el último que completa la capacidad del bote, deben incrementarlo. De lo contrario, cuando el bote regrese a esa costa, la cola podría quedar esperando un ticket perteneciente a una persona que ya realizó el viaje.
+
+Para que la entrega de tickets también respete estrictamente el orden de llegada, se puede proteger la llamada a `pedirTicket` mediante un molinete desde fuera del monitor. Una vez que una persona ingresa a `pedirTicket` y obtiene su número, libera inmediatamente el molinete para permitir que la siguiente persona solicite el suyo. Esto es posible porque `pedirTicket` no contiene ninguna operación `wait`.
