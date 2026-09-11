@@ -11,6 +11,7 @@ public class CaminoUnaVia {
     private final int[] cantidadEsperando;
     private final Semaphore[] s;
     private final Semaphore[] mutexs;
+    private Semaphore turnstile = new Semaphore(1, true);
     private Semaphore cambioSentido = new Semaphore(1);
 
     public CaminoUnaVia() {
@@ -26,12 +27,14 @@ public class CaminoUnaVia {
     }
 
     public void entrar(int direction) throws InterruptedException {
+        turnstile.acquire();
         mutexs[direction].acquire();
         cantidadEsperando[direction] += 1;
         if (cantidadEsperando[direction] == 1){
             cambioSentido.acquire();
         }
         mutexs[direction].release();
+        turnstile.release();
     }
 
     public void salir(int direction) throws InterruptedException {
