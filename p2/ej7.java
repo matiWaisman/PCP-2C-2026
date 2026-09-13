@@ -1,7 +1,7 @@
 import java.util.concurrent.Semaphore;
 import java.util.Random;
 
-public class Gimnasio {
+public class ej7 {
     private static final int CANTIDAD_CLIENTES = 5;
     private static final int EJERCICIOS_POR_CLIENTE = 10;
     private static final int CANTIDAD_MAQUINAS = 4;
@@ -9,7 +9,7 @@ public class Gimnasio {
     private Semaphore[] mutexMaquinas = new Semaphore[CANTIDAD_MAQUINAS];
     private Semaphore rackDiscos;
 
-    public Gimnasio(int cantidadDiscos) {
+    public ej7(int cantidadDiscos) {
         rackDiscos = new Semaphore(cantidadDiscos);
         for (int i = 0; i < CANTIDAD_MAQUINAS; i++) {
             mutexMaquinas[i] = new Semaphore(1); // 1 permiso = mutex binario
@@ -30,7 +30,7 @@ public class Gimnasio {
 
     public static void main(String[] args) throws InterruptedException {
         int cantidadDiscosTotales = Integer.parseInt(args[0]);
-        Gimnasio gimnasio = new Gimnasio(cantidadDiscosTotales);
+        ej7 gimnasio = new ej7(cantidadDiscosTotales);
 
         Thread[] clientes = new Thread[CANTIDAD_CLIENTES];
 

@@ -219,141 +219,480 @@ Con lo que si hay que tener cuidado es con la obtencion de los discos, si es ato
 ## Punto B
 El codigo está en [ej7.java](./ej7.java)
 
+Asumo que `rackDiscos.acquire(cantidadDiscos);` se hace de manera atomica: O se hacen los acquire de `cantidadDiscos` o no se hace nada, no equivale a un ciclo de `acquire(1)`, porque si fuera asi podría ocurrir un deadlock. 
+
+Si el `acquires(n)` equivale a hacer `n` iteraciones de `acquire(1)` para salvar un caso de deadlock como el que hable en el inciso anterior habría que encerrar la acción de `acquire` del rack dentro de un mutex, para que solo pueda haber una persona intentando agarrar discos a la vez. Como todas las personas van a terminar eventualmente de usar la maquina tarde o temprano se van a liberar los discos suficientes para que cada persona pueda agarrar y no ocurra un deadlock. 
+
 ## Punto C 
 En caso de que todo el tiempo llegue gente a una maquina que un usuario este esperando, y "tenga mala suerte" una persona no podría usar nunca una maquina. Para solucionar esto podriamos hacer que el semaforo sea fuerte y simule una fila, algo que es razonable en un gimnasio. 
 
 Otro problema que puede haber puede ser a la hora de agarrar discos, si hay pocos discos y las 4 personas se estan peleando por usar los pocos discos que hay, tambien podria hacer que una persona que ya es su turno en la maquina puede llegar a tener "mala suerte" y nunca pueda agarrar discos para la maquina, porque siempre les roba los discos otro, para solucionar esto tambien podemos hacer que el semaforo sea fuerte, y nuevamente tenemos otra fila para agarrar discos. 
 
 # Ejercicio 8 
-TODO 
+Este problema suena mucho a productores y consumidores con un buffer acotado, donde los consumidores tienen que consumir de a dos a la vez, y para los productores la cota para producir es dinamica respecto de la cantidad de productores que hay. 
+
+Por lo que dice el enunciado, siempre puedo asumir que por lo menos hay 2 o mas productores. 
+
+```java 
+global int cantidadBolitas = 0;
+
+global semaphore notEmpty = Semaphore(0);
+global semaphore slots = Semaphore(0);
+global semaphore mutexCantidadElementos = Semaphore(1);
+
+thread generador(){
+    void empezarAGenerar(){
+        slots.release();
+    }
+
+    void dejarDeGenerar(){
+        slots.acquire(); // Le resto un permiso que nunca mas va a volver
+    }
+
+    int generar(){
+        slots.acquire();
+        mutexCantidadElementos.acquire();
+        cantidadBolitas += 1;
+        if(cantidadBolitas % 2 == 0){
+            notEmpty.release();
+        }
+        mutexCantidadElementos.release();
+        return 1;
+    }
+}
+
+thread consumidor(){
+    int consumir(){
+        notEmpty.acquire();
+        mutexCantidadElementos.acquire();
+        cantidadBolitas -= 2; 
+        slots.release(2);
+        mutexCantidadElementos.release();
+        return 1;
+    }
+}
+```
+
 
 # Ejercicio 9 
 ## Punto A 
 
-```
-global semaphore s0 = Semaphore(1)
-global semaphore s1 = Semaphore(0)
-global semaphore[2] s = [s0, s1]
-global int constaActual = 0
-global int capacidadTransbordador = N
+```java
+global semaphore s0 = Semaphore(0);
+global semaphore s1 = Semaphore(0);
+global semaphore[2] s = [s0, s1];
+global semaphore mutexPersonasEnTransbordador = Semaphore(1);
+global semaphore puedePartir = Semaphore(0);
+global semaphore puedeTerminar = Semaphore(0);
+global semaphore puedenBajar = Semaphore(0);
+global int costaActual = 0;
+global int capacidadTransbordador;
+global int cantidadPersonasEnTransbordador = 0;
 
-thread transbordador(){
 
+
+thread transbordador(int N){
+    void transbordador(){
+        mutexPersonasEnTransbordador.acquire();
+        capacidadTransbordador = N; 
+        s[0].release(capacidadTransbordador);
+        mutexPersonasEnTransbordador.release();
+    }
+
+    void iniciarViaje(){
+        puedePartir.acquire();
+    }
+
+    void finalizarViaje(){
+        puedenBajar.release(capacidadTransbordador);
+        puedeTerminar.acquire();
+        costaActual = (costaActual + 1) % 2;
+        s[costaActual].release(capacidadTransbordador);
+    }
 }
 
 thread persona(int costa){
-    s[costa].acquire()
+    void subirBote(int costaOrigen){
+        s[costaOrigen].acquire();
+        mutexPersonasEnTransbordador.acquire();
+        cantidadPersonasEnTransbordador += 1;
+        if(cantidadPersonasEnTransbordador == capacidadTransbordador){
+            puedePartir.release();
+        }
+        mutexPersonasEnTransbordador.release();
+    }
 
+    void bajarseBote(int costaDestino){
+        puedenBajar.acquire();
+        mutexPersonasEnTransbordador.acquire();
+        cantidadPersonasEnTransbordador -= 1; 
+        if(cantidadPersonasEnTransbordador == 0){
+            puedeTerminar.release();
+        }
+        mutexPersonasEnTransbordador.release();
+    }
 }
 ```
+## Punto B 
+Asumo que por mas que ahora la gente puede subir y bajar concurrentemente, aun asi para empezar el nuevo viaje tienen que bajarse los `N` del viaje anterior y subir los `N` del viaje nuevo. 
+
+```java
+global semaphore s0 = Semaphore(0);
+global semaphore s1 = Semaphore(0);
+global semaphore[2] s = [s0, s1];
+global semaphore mutexPersonasSubieron = Semaphore(1);
+global semaphore puedePartir = Semaphore(0);
+global semaphore puedenBajar = Semaphore(0);
+global int costaActual = 0;
+global int capacidadTransbordador;
+global int cantidadPersonasSubieron = 0; 
+
+thread transbordador(int N){
+    void transbordador(){
+        capacidadTransbordador = N; 
+        s[0].release(capacidadTransbordador);
+    }
+
+    void iniciarViaje(){
+        puedePartir.acquire();
+    }
+
+    void finalizarViaje(){
+        costaActual = (costaActual + 1) % 2;
+        mutexPersonasSubieron.acquire();
+        cantidadPersonasSubieron = 0;
+        mutexPersonasSubieron.release();
+        puedenBajar.release(capacidadTransbordador);
+    }
+}
+
+thread persona(int costa){
+    void subirBote(int costaOrigen){
+        s[costaOrigen].acquire();
+        mutexPersonasSubieron.acquire();
+        cantidadPersonasSubieron += 1;
+        if(cantidadPersonasSubieron == capacidadTransbordador){
+            puedePartir.release();
+        }
+        mutexPersonasSubieron.release();
+    }
+
+    void bajarseBote(int costaDestino){
+        puedenBajar.acquire();
+        s[costaActual].release(); // Libero un lugar
+    }
+}
+```
+
+# Ejercicio 10 
+Dentro de los posibles lugares de carga y descarga, las maquinas van a tener los ids de 0 a 7, la plataforma de recepción el id de 8, y la de entrega id 9. 
+
+En cualquier momento puede ir un vehiculo a la plataforma de descarga o de carga a hacer descarga o carga y no importa si ya hay otros haciendo lo mismo. 
+
+Asumo que tengo acceso a un objeto dummy `FakeSemaphore()` que implementa `acquire` y `release` pero que ambas son no bloqueantes y realmente no hacen nada. De esta manera no hace falta poner ifs que si el id de la carga o descarga es uno en particular haga algo distinto y siempre se haga lo mismo independientemente de en que estacion de carga o descarga se va a operar.
+
+Asumo tambien que cada auto tiene un id del 0 al 3 indicando cual es el cual puede consultar haciendo `currentThread.id()` y lo mismo con las maquinas/ estaciones de carga y descarga que tienen ids del 0 al 9. 
+
+```java 
+global List<Semaphore> autoPuedeDescargarEnMaquina = new List<Semaphore>();
+// mutex: controla que un auto pueda ocupar el slot de descarga de la maquina (auto -> maquina)
+
+global List<Semaphore> maquinaRecibioMateriaPrima = new List<Semaphore>();
+// señal: el auto avisa a la maquina que ya dejo materia prima para procesar (auto -> maquina)
+
+global List<Semaphore> autoPuedeCargarDeMaquina = new List<Semaphore>();
+// mutex: controla que un auto pueda ocupar el slot de carga de la maquina (auto -> maquina)
+
+global List<Semaphore> maquinaTerminoDeProcesar = new List<Semaphore>();
+// señal: la maquina avisa a los autos que ya hay producto refinado listo para retirar (maquina -> auto)
+
+// Posiciones 0 a 7: las 8 maquinas procesadoras
+for(int i = 0; i < 8; i++){
+    autoPuedeDescargarEnMaquina.push(Semaphore(1));  // arranca libre
+    maquinaRecibioMateriaPrima.push(Semaphore(0));   // arranca sin nada para procesar
+    autoPuedeCargarDeMaquina.push(Semaphore(1));     // arranca libre
+    maquinaTerminoDeProcesar.push(Semaphore(0));     // arranca sin producto listo
+}
+
+// Posiciones 8 y 9: plataforma de recepcion (8) y de entrega (9) - todo fake
+autoPuedeDescargarEnMaquina.push(FakeSemaphore());
+autoPuedeDescargarEnMaquina.push(FakeSemaphore());
+maquinaRecibioMateriaPrima.push(FakeSemaphore());
+maquinaRecibioMateriaPrima.push(FakeSemaphore());
+autoPuedeCargarDeMaquina.push(FakeSemaphore());
+autoPuedeCargarDeMaquina.push(FakeSemaphore());
+maquinaTerminoDeProcesar.push(FakeSemaphore());
+maquinaTerminoDeProcesar.push(FakeSemaphore());
+
+thread maquina(int identificador){
+    int idMaquina = identificador;
+    
+    void descargar(){
+        maquinaRecibioMateriaPrima[currentThread.id()].acquire();
+    }
+
+    void procesar(){
+        // Hace algo
+    }
+
+    void cargar(){
+        maquinaTerminoDeProcesar[currentThread.id()].release();
+    }
+}
+
+thread vehiculo(int identificador){
+    int idVehiculo = identificador;
+
+    void cargar(int idDestino){
+        autoPuedeCargarDeMaquina[idDestino].acquire();
+        maquinaTerminoDeProcesar[idDestino].acquire();
+        autoPuedeCargarDeMaquina[idDestino].release();
+    }
+
+    void descargar(int idDestino){
+        autoPuedeDescargarEnMaquina[idDestino].acquire();
+        maquinaRecibioMateriaPrima[idDestino].release();
+        autoPuedeDescargarEnMaquina[idDestino].release();
+    }
+}
+```
+
+TODO: Preguntar si una maquina puede hacer carga, procesamiento y descarga simultaneamente, la consigna esta medio floja de papeles. 
 
 # Ejercicio 11 
 ## Punto A 
-```
-global int personasEnElBaño = 0
+```java
+global int personasEnElBaño = 0;
 
-global semaphore mutexPB = Semaphore(1)
-global semaphore baños = Semaphore(8)
-global semaphore acceso = Semaphore(1)
-
+global semaphore mutexPB = Semaphore(1);
+global semaphore baños = Semaphore(8);
+global semaphore acceso = Semaphore(1);
 
 thread persona(){
-    mutexPB.acquire()
-    personasEnElBaño += 1
+    mutexPB.acquire();
+    personasEnElBaño += 1;
     if(personasEnElBaño == 1){
-        acceso.acquire()
+        acceso.acquire();
     }
-    mutexPB.release()
-    baños.acquire()
-    print("Haciendo pichin")
-    baños.release()
-    mutexPB.acquire()
-    personasEnElBaño -= 1 
+    mutexPB.release();
+    baños.acquire();
+    print("Haciendo pichin");
+    baños.release();
+    mutexPB.acquire();
+    personasEnElBaño -= 1; 
     if(personasEnElBaño == 0){
-        acceso.release()
+        acceso.release();
     }
-    mutexPB.release()
+    mutexPB.release();
 }
 
 thread limpieza(){
-    acceso.acquire()
-    print("Limpiando")
-    acceso.release()
+    acceso.acquire();
+    print("Limpiando");
+    acceso.release();
 }
 ```
 
 ## Punto B 
 Si el prioridad de limpieza tiene prioridad, lo que podemos hacer es agregar un molinete FIFO, que hace que nadie pueda entrar al baño si esta el personal de limpieza esperando, por lo que cuando llega el personal de limpieza va a esperar a que todos los que esten adentro terminen y despues va a entrar el. 
 
-```
-global int personasEnElBaño = 0
+```java
+global int personasEnElBaño = 0;
 
-global semaphore molinete = Semaphore(1, True)
-global semaphore mutexPB = Semaphore(1)
-global semaphore baños = Semaphore(8)
-global semaphore acceso = Semaphore(1)
+global semaphore molinete = Semaphore(1, True);
+global semaphore mutexPB = Semaphore(1);
+global semaphore baños = Semaphore(8);
+global semaphore acceso = Semaphore(1);
 
 
 thread persona(){
-    molinete.acquire()
-    molinete.release()
-    mutexPB.acquire()
-    personasEnElBaño += 1
+    molinete.acquire();
+    molinete.release();
+    mutexPB.acquire();
+    personasEnElBaño += 1;
     if(personasEnElBaño == 1){
-        acceso.acquire()
+        acceso.acquire();
     }
-    mutexPB.release()
-    baños.acquire()
-    print("Haciendo pichin")
-    baños.release()
-    mutexPB.acquire()
-    personasEnElBaño -= 1 
+    mutexPB.release();
+    baños.acquire();
+    print("Haciendo pichin");
+    baños.release();
+    mutexPB.acquire();
+    personasEnElBaño -= 1; 
     if(personasEnElBaño == 0){
-        acceso.release()
+        acceso.release();
     }
-    mutexPB.release()
+    mutexPB.release();
 }
 
 thread limpieza(){
-    molinete.acquire()
-    acceso.acquire()
-    print("Limpiando")
-    molinete.release()
-    acceso.release()
+    molinete.acquire();
+    acceso.acquire();
+    print("Limpiando");
+    molinete.release();
+    acceso.release();
 }
 ```
 
 ## Punto C
-```
-global int personasEnElBaño = 0
+```java
+global int personasEnToilette = 0;
+global boolean hayLimpieza = false;
 
-global semaphore mutexPB = Semaphore(1)
-global semaphore baños = Semaphore(8)
-global semaphore acceso = Semaphore(1)
-global semaphore molinete = Semaphore(1, True)
-
+global semaphore molinete = Semaphore(1, True);
+global semaphore mutexPT = Semaphore(1);
+global semaphore baños = Semaphore(8);
+global semaphore acceso = Semaphore(1);
 
 thread persona(){
-    mutexPB.acquire()
-    personasEnElBaño += 1
-    if(personasEnElBaño == 1){
-        acceso.acquire()
+    molinete.acquire();
+    molinete.release();
+    mutexPT.acquire();
+    if(hayLimpieza || personasEnToilette == 0){
+        acceso.acquire();
     }
-    mutexPB.release()
-    baños.acquire()
-    print("Haciendo pichin")
-    baños.release()
-    mutexPB.acquire()
-    personasEnElBaño -= 1 
-    if(personasEnElBaño == 0){
-        acceso.release()
+    mutexPT.release();
+    baños.acquire();
+    mutexPT.acquire();
+    personasEnToilette += 1;
+    mutexPT.release();
+    print("Haciendo pichin");
+    mutexPT.acquire();
+    personasEnToilette -= 1; 
+    baños.release();
+    if(hayLimpieza || personasEnToilette == 0){
+        acceso.release();
     }
-    mutexPB.release()
+    mutexPT.release();
+    
 }
 
 thread limpieza(){
-    acceso.acquire()
-    print("Limpiando")
-    acceso.release()
+    molinete.acquire();
+    hayLimpieza = true;
+    acceso.acquire();
+    print("Limpiando");
+    hayLimpieza = false;
+    molinete.release();
+    acceso.release();
 }
 ```
+
+TODO: Arreglar, no esta bien pq le pueden ganar el acceso al de limpieza. 
+
+# Ejercicio 12
+## Punto A
+Asumo que las dos posibles direcciones/ destinos estan representadas con el cero y el uno. 
+```java 
+global int[] cantidadAutosCruzando = {0, 0};
+global semaphore[] mutexAutosCruzando = {Semaphore(1), Semaphore(1)};
+global semaphore acceso = Semaphore(1);
+
+thread auto(){
+    void entrarPuente(int direccionOrigen){
+        mutexAutosCruzando[direccionOrigen].acquire();
+        if(cantidadAutosCruzando[direccionOrigen] == 0){
+            acceso.acquire();
+        }
+        // Si estoy aca es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
+        cantidadAutosCruzando[direccionOrigen] += 1;
+        mutexAutosCruzando[direccionOrigen].release();
+    }
+
+    void cruzarPuente(){
+        print("Cruzando el puente");
+    }
+
+    void salirPuente(int direccionOrigen){
+        mutexAutosCruzando[direccionOrigen].acquire();
+        cantidadAutosCruzando[direccionOrigen] -= 1;
+        if(cantidadAutosCruzando[direccionOrigen] == 0){
+            acceso.release();
+        }
+        mutexAutosCruzando[direccionOrigen].release();
+    }
+}
+```
+
+La idea seria que cada auto ejecute un dependiendo de la direccion en la que parte: 
+```
+entrarPuente(origen);
+cruzarPuente();
+salirPuente(origen);
+```
+
+El problema que tiene esta primer solución es que si todo el tiempo entran autos de una dirección, deja en starvation a los autos del otro lado. Para solucionar esto se puede agregar a `entrarPuente` un turnstile que lo que haga es hacer que quien cruza el puente lo determina el orden en el que llego al principio. Es un trade off entre mas serializacion por menos inanicion versus mas inanicion y mas serializacion. 
+
+```java 
+global int[] cantidadAutosCruzando = {0, 0};
+global semaphore[] mutexAutosCruzando = {Semaphore(1), Semaphore(1)};
+global semaphore acceso = Semaphore(1);
+global semaphore turnstile = Semaphore(1, true);
+
+thread auto(){
+    void entrarPuente(int direccionOrigen){
+        turnstile.acquire();
+        mutexAutosCruzando[direccionOrigen].acquire();
+        if(cantidadAutosCruzando[direccionOrigen] == 0){
+            acceso.acquire();
+        }
+        // Si estoy aca es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
+        cantidadAutosCruzando[direccionOrigen] += 1;
+        mutexAutosCruzando[direccionOrigen].release();
+        turnstile.release();
+    }
+
+    void cruzarPuente(){
+        print("Cruzando el puente");
+    }
+
+    void salirPuente(int direccionOrigen){
+        mutexAutosCruzando[direccionOrigen].acquire();
+        cantidadAutosCruzando[direccionOrigen] -= 1;
+        if(cantidadAutosCruzando[direccionOrigen] == 0){
+            acceso.release();
+        }
+        mutexAutosCruzando[direccionOrigen].release();
+    }
+}
+```
+
+## Punto B 
+```java 
+global int[] cantidadAutosCruzando = {0, 0};
+global semaphore[] mutexAutosCruzando = {Semaphore(1), Semaphore(1)};
+global semaphore autosCruzando = Semaphore(3);
+global semaphore acceso = Semaphore(1);
+
+thread auto(){
+    void entrarPuente(int direccionOrigen){
+        mutexAutosCruzando[direccionOrigen].acquire();
+        if(cantidadAutosCruzando[direccionOrigen] == 0){
+            acceso.acquire();
+        }
+        // Si estoy aca es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
+        cantidadAutosCruzando[direccionOrigen] += 1;
+        mutexAutosCruzando[direccionOrigen].release();
+        autosCruzando.acquire();
+    }
+
+    void cruzarPuente(){
+        print("Cruzando el puente");
+    }
+
+    void salirPuente(int direccionOrigen){
+        autosCruzando.release();
+        mutexAutosCruzando[direccionOrigen].acquire();
+        cantidadAutosCruzando[direccionOrigen] -= 1;
+        if(cantidadAutosCruzando[direccionOrigen] == 0){
+            acceso.release();
+        }
+        mutexAutosCruzando[direccionOrigen].release();
+    }
+}
+```
+
+## Punto C 
+La solución propuesta no es libre de inanición, si empiezan cruzando los autos de una dirección, y constantemente entran autos de esa dirección nunca van a poder pasar los autos de la otra dirección. Para solucionar esto se podría agregar un turnstile como en el inciso A para que no haya inanición, a costo de por ejemplo un caso que si de un lado tenemos 3 autos pero llego primero uno del otro lado, va a pasar primero ese auto en vez de los 3 autos del otro lado que son más.
+
+El limite de que solo puedan cruzar 3 a la vez no impide que haya inanición por el modo en el que se maneja el cambio de lado.
