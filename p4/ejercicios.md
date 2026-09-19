@@ -457,7 +457,22 @@ public class LockFreeStack<T> {
 ```
 
 # Ejercicio 9 
-TODO 
+## Punto A
+En la implementación de la pila lock-free sin control de versiones, puede darse el problema ABA en un caso como este. Supongamos que el pool de nodos es compartido y funciona como una pila (LIFO):
+
+- Inicialmente, la pila es `e1 -> e2 -> e3`, donde `e1` es el tope. El pool está vacío.
+- Un thread `T0` comienza un `pop`: lee `top = e1` y `e1.next = e2`. Se pausa justo antes de ejecutar `CAS(top, e1, e2)`. La pila sigue siendo `e1 -> e2 -> e3`.
+- Un thread `T1` desapila `e1` y lo coloca en el pool. La pila queda `e2 -> e3` y el pool queda `e1`.
+- Un thread `T2` desapila `e2` y lo coloca en el pool. La pila queda `e3` y el pool queda `e2 -> e1`, con `e2` en el tope del pool.
+- Un thread `T3` comienza un `push`. Retira `e2` del pool para usarlo como nodo del nuevo elemento, pero se pausa **antes de conectarlo a la pila**. La pila sigue siendo `e3`; el pool queda `e1`. Por ahora, `e2` está reservado por `T3`, pero no pertenece a la pila.
+- `T1` comienza otro `push`. Retira `e1` del pool, le asigna un nuevo valor y lo conecta sobre `e3`. La pila queda `e1 -> e3` y el pool queda vacío.
+- `T0` reanuda y ejecuta el CAS que tenía pendiente: `CAS(top, e1, e2)`. El CAS **tiene éxito**, porque el tope vuelve a ser el mismo nodo físico `e1`.
+- Como resultado, `top` pasa a apuntar a `e2`. Esto es incorrecto: `e2` no estaba en la pila, sino reservado por `T3` para un `push` que todavía no había terminado.
+
+El problema ABA ocurre porque `T0` observó inicialmente `top = e1`, luego otros threads cambiaron el tope y, finalmente, `e1` fue reutilizado como tope. Un CAS que compara solo la referencia ve nuevamente `e1` y no detecta todos los cambios intermedios. Con un número de versión, el CAS de `T0` fallaría, porque la versión del tope ya no sería la que leyó al comienzo.
+
+## Punto B 
+TODO
 
 # Ejercicio 10 
 Solucion `lock-free` usando una unica variable atomica: 
@@ -478,6 +493,45 @@ public class Contador{
     }
 }
 ```
-Esta solucion no es `wait-free` porque tiene un alto nivel de contencion en la variable atomica `value`, por mas que sea atomica puede ocurrir que si un proceso quiere hacer alguna interaccion con la variable, y constantemente lleguen otros threads a llamar a un metodo no lo seleccionen para ejecutar. Por lo que no podemos determinar en que cantidad finita de pasos un thread puede interactuar con `value`. 
+Esta solución es `wait-free`. Cada uno de los tres métodos (inc, get, reset) consiste en una única llamada a una operación atómica de AtomicInteger (getAndIncrement(), get(), getAndSet()), sin ningún ciclo de reintento explícito en nuestro código. No hay ningún while(true) que dependa de si el thread "gana una carrera" contra otros — cada método ejecuta una cantidad fija de pasos (uno) para completar, sin importar cuántos otros threads estén compitiendo concurrentemente ni qué tan mala sea la interacción entre ellos.
+
+Preguntar si no hace falta hacer un CAS o algo. 
 
 # Ejercicio 11
+```java 
+// Par inmutable para la posición
+final class Posicion {
+    final int x;
+    final int y;
+
+    Posicion(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+// Par inmutable para el tamaño
+final class Tamano {
+    final int alto;
+    final int ancho;
+
+    Tamano(int alto, int ancho) {
+        this.alto = alto;
+        this.ancho = ancho;
+    }
+}
+
+public class Figura {
+    AtomicReference<Posicion> posicion = new AtomicReference<>(new Posicion(0, 0));
+    AtomicReference<Tamano> tamano = new AtomicReference<>(new Tamano(0, 0));
+
+    public void ajustarPosicion() {
+        posicion.set(new Posicion(algunX(), algunY()));
+    }
+
+    public void ajustarTamano() {
+        tamano.set(new Tamano(algunAlto(), algunAncho()));
+    }
+}
+```
+Preguntar si no hace falta hacer un CAS o algo. 
