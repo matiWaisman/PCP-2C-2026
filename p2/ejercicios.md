@@ -27,9 +27,9 @@ Si le asignamos un timestamp a cada letra de cuando se tiene que mostrar como `T
 - `Ts(A) < Ts(C) < Ts(E) < Ts(R) < Ts(O)` o 
 - `Ts(A) < Ts(C) < Ts(R) < Ts(E) < Ts(O)`
 
-Para lograr que se cumpla al menos una, podemos hacer que `R` dependa de un semaforo que se activa luego de mostrar `C` y que `O` dependa de un semaforo que se activa luego de mostrar `E`. 
+Para lograr que se cumpla al menos una, podemos hacer que `R` dependa de un semáforo que se activa luego de mostrar `C` y que `O` dependa de un semáforo que se activa luego de mostrar `E`. 
 
-Notar que no hace falta que `E` dependa del mismo semaforo que `R` porque como asumimos que `print` es atomico, siempre se va a cumplir que `Ts(C) < Ts(E)`. Lo mismo ocurre entre `R` y `O`. 
+Notar que no hace falta que `E` dependa del mismo semáforo que `R` porque como asumimos que `print` es atómico, siempre se va a cumplir que `Ts(C) < Ts(E)`. Lo mismo ocurre entre `R` y `O`. 
 
 ```
 global semaphore puedeC = Semaphore(0)
@@ -87,7 +87,7 @@ thread T3{
 }
 ```
 
-En este caso el patron que utilizamos es de barrera (un poco simplificado), todos se quedan esperando antes de dar el primer `OK` y los permisos del `OK` se liberan todos de una. No hace falta que `T3` tambien espere a la barrera porque sabemos que `print(o)` tiene que ser el ultimo print antes del primer ok. 
+En este caso el patrón que utilizamos es de barrera (un poco simplificado), todos se quedan esperando antes de dar el primer `OK` y los permisos del `OK` se liberan todos de una. No hace falta que `T3` también espere a la barrera porque sabemos que `print(o)` tiene que ser el último print antes del primer ok. 
 
 # Ejercicio 4 
 ```
@@ -168,7 +168,7 @@ thread T2{
     }
 }
 ```
-Este seria un caso de uso de semaforos split.
+Este sería un caso de uso de semáforos split.
 
 ## Punto C
 ```
@@ -192,7 +192,7 @@ thread T2{
 ```
 
 # Ejercicio 6 
-El codigo está en [ej6.java](./ej6.java)
+El código está en [ej6.java](./ej6.java)
 
 # Ejercicio 7
 ## Punto A 
@@ -213,25 +213,25 @@ El orden importa en ambas puntas. Al principio, primero se ocupa la máquina y r
 
 Este orden fijo de adquisición —siempre máquina antes que discos— es lo que evita el deadlock: como todos los clientes piden los recursos en el mismo orden, no puede darse una espera circular donde un cliente tenga la máquina esperando discos mientras otro tiene discos esperando esa misma máquina.
 
-Con lo que si hay que tener cuidado es con la obtencion de los discos, si es atomica haciendo un `acquires(cantDiscosNecesarias)` no va a haber problema, pero si se hace con un ciclo de `acquires` puede haber un deadlock. Un caso puede ser que dos personas quieren usar maquinas distintas que ambas estan vacias, si cada uno necesita 3 discos y hay 3 disponibles, puede ocurrir que cada uno agarre 2 y sea interrumpido y el otro agarre un disco y se queden en deadlock. 
+Con lo que sí hay que tener cuidado es con la obtención de los discos, si es atómica haciendo un `acquires(cantDiscosNecesarias)` no va a haber problema, pero si se hace con un ciclo de `acquires` puede haber un deadlock. Un caso puede ser que dos personas quieren usar máquinas distintas que ambas están vacías, si cada uno necesita 3 discos y hay 3 disponibles, puede ocurrir que cada uno agarre 2 y sea interrumpido y el otro agarre un disco y se queden en deadlock. 
 
 
 ## Punto B
-El codigo está en [ej7.java](./ej7.java)
+El código está en [ej7.java](./ej7.java)
 
-Asumo que `rackDiscos.acquire(cantidadDiscos);` se hace de manera atomica: O se hacen los acquire de `cantidadDiscos` o no se hace nada, no equivale a un ciclo de `acquire(1)`, porque si fuera asi podría ocurrir un deadlock. 
+Asumo que `rackDiscos.acquire(cantidadDiscos);` se hace de manera atómica: O se hacen los acquire de `cantidadDiscos` o no se hace nada, no equivale a un ciclo de `acquire(1)`, porque si fuera así podría ocurrir un deadlock. 
 
-Si el `acquires(n)` equivale a hacer `n` iteraciones de `acquire(1)` para salvar un caso de deadlock como el que hable en el inciso anterior habría que encerrar la acción de `acquire` del rack dentro de un mutex, para que solo pueda haber una persona intentando agarrar discos a la vez. Como todas las personas van a terminar eventualmente de usar la maquina tarde o temprano se van a liberar los discos suficientes para que cada persona pueda agarrar y no ocurra un deadlock. 
+Si el `acquires(n)` equivale a hacer `n` iteraciones de `acquire(1)` para salvar un caso de deadlock como el que hablé en el inciso anterior habría que encerrar la acción de `acquire` del rack dentro de un mutex, para que solo pueda haber una persona intentando agarrar discos a la vez. Como todas las personas van a terminar eventualmente de usar la máquina tarde o temprano se van a liberar los discos suficientes para que cada persona pueda agarrar y no ocurra un deadlock. 
 
 ## Punto C 
-En caso de que todo el tiempo llegue gente a una maquina que un usuario este esperando, y "tenga mala suerte" una persona no podría usar nunca una maquina. Para solucionar esto podriamos hacer que el semaforo sea fuerte y simule una fila, algo que es razonable en un gimnasio. 
+En caso de que todo el tiempo llegue gente a una máquina que un usuario esté esperando, y "tenga mala suerte" una persona no podría usar nunca una máquina. Para solucionar esto podríamos hacer que el semáforo sea fuerte y simule una fila, algo que es razonable en un gimnasio. 
 
-Otro problema que puede haber puede ser a la hora de agarrar discos, si hay pocos discos y las 4 personas se estan peleando por usar los pocos discos que hay, tambien podria hacer que una persona que ya es su turno en la maquina puede llegar a tener "mala suerte" y nunca pueda agarrar discos para la maquina, porque siempre les roba los discos otro, para solucionar esto tambien podemos hacer que el semaforo sea fuerte, y nuevamente tenemos otra fila para agarrar discos. 
+Otro problema que puede haber puede ser a la hora de agarrar discos, si hay pocos discos y las 4 personas se están peleando por usar los pocos discos que hay, también podría hacer que una persona que ya es su turno en la máquina puede llegar a tener "mala suerte" y nunca pueda agarrar discos para la máquina, porque siempre les roba los discos otro, para solucionar esto también podemos hacer que el semáforo sea fuerte, y nuevamente tenemos otra fila para agarrar discos. 
 
 # Ejercicio 8 
-Este problema suena mucho a productores y consumidores con un buffer acotado, donde los consumidores tienen que consumir de a dos a la vez, y para los productores la cota para producir es dinamica respecto de la cantidad de productores que hay. 
+Este problema suena mucho a productores y consumidores con un buffer acotado, donde los consumidores tienen que consumir de a dos a la vez, y para los productores la cota para producir es dinámica respecto de la cantidad de productores que hay. 
 
-Por lo que dice el enunciado, siempre puedo asumir que por lo menos hay 2 o mas productores. 
+Por lo que dice el enunciado, siempre puedo asumir que por lo menos hay 2 o más productores. 
 
 ```java 
 global int cantidadBolitas = 0;
@@ -246,7 +246,7 @@ thread generador(){
     }
 
     void dejarDeGenerar(){
-        slots.acquire(); // Le resto un permiso que nunca mas va a volver
+        slots.acquire(); // Le resto un permiso que nunca más va a volver
     }
 
     int generar(){
@@ -334,7 +334,7 @@ thread persona(int costa){
 }
 ```
 ## Punto B 
-Asumo que por mas que ahora la gente puede subir y bajar concurrentemente, aun asi para empezar el nuevo viaje tienen que bajarse los `N` del viaje anterior y subir los `N` del viaje nuevo. 
+Asumo que por más que ahora la gente puede subir y bajar concurrentemente, aun así para empezar el nuevo viaje tienen que bajarse los `N` del viaje anterior y subir los `N` del viaje nuevo. 
 
 ```java
 global semaphore s0 = Semaphore(0);
@@ -385,28 +385,28 @@ thread persona(int costa){
 ```
 
 # Ejercicio 10 
-Dentro de los posibles lugares de carga y descarga, las maquinas van a tener los ids de 0 a 7, la plataforma de recepción el id de 8, y la de entrega id 9. 
+Dentro de los posibles lugares de carga y descarga, las máquinas van a tener los ids de 0 a 7, la plataforma de recepción el id de 8, y la de entrega id 9. 
 
-En cualquier momento puede ir un vehiculo a la plataforma de descarga o de carga a hacer descarga o carga y no importa si ya hay otros haciendo lo mismo. 
+En cualquier momento puede ir un vehículo a la plataforma de descarga o de carga a hacer descarga o carga y no importa si ya hay otros haciendo lo mismo. 
 
-Asumo que tengo acceso a un objeto dummy `FakeSemaphore()` que implementa `acquire` y `release` pero que ambas son no bloqueantes y realmente no hacen nada. De esta manera no hace falta poner ifs que si el id de la carga o descarga es uno en particular haga algo distinto y siempre se haga lo mismo independientemente de en que estacion de carga o descarga se va a operar.
+Asumo que tengo acceso a un objeto dummy `FakeSemaphore()` que implementa `acquire` y `release` pero que ambas son no bloqueantes y realmente no hacen nada. De esta manera no hace falta poner ifs que si el id de la carga o descarga es uno en particular haga algo distinto y siempre se haga lo mismo independientemente de en que estación de carga o descarga se va a operar.
 
-Asumo tambien que cada auto tiene un id del 0 al 3 indicando cual es el cual puede consultar haciendo `currentThread.id()` y lo mismo con las maquinas/ estaciones de carga y descarga que tienen ids del 0 al 9. 
+Asumo también que cada auto tiene un id del 0 al 3 indicando cuál es el cual puede consultar haciendo `currentThread.id()` y lo mismo con las máquinas/ estaciones de carga y descarga que tienen ids del 0 al 9. 
 
 ```java 
 global List<Semaphore> autoPuedeDescargarEnMaquina = new List<Semaphore>();
-// mutex: controla que un auto pueda ocupar el slot de descarga de la maquina (auto -> maquina)
+// mutex: controla que un auto pueda ocupar el slot de descarga de la máquina (auto -> máquina)
 
 global List<Semaphore> maquinaRecibioMateriaPrima = new List<Semaphore>();
-// señal: el auto avisa a la maquina que ya dejo materia prima para procesar (auto -> maquina)
+// señal: el auto avisa a la máquina que ya dejó materia prima para procesar (auto -> máquina)
 
 global List<Semaphore> autoPuedeCargarDeMaquina = new List<Semaphore>();
-// mutex: controla que un auto pueda ocupar el slot de carga de la maquina (auto -> maquina)
+// mutex: controla que un auto pueda ocupar el slot de carga de la máquina (auto -> máquina)
 
 global List<Semaphore> maquinaTerminoDeProcesar = new List<Semaphore>();
-// señal: la maquina avisa a los autos que ya hay producto refinado listo para retirar (maquina -> auto)
+// señal: la máquina avisa a los autos que ya hay producto refinado listo para retirar (máquina -> auto)
 
-// Posiciones 0 a 7: las 8 maquinas procesadoras
+// Posiciones 0 a 7: las 8 máquinas procesadoras
 for(int i = 0; i < 8; i++){
     autoPuedeDescargarEnMaquina.push(Semaphore(1));  // arranca libre
     maquinaRecibioMateriaPrima.push(Semaphore(0));   // arranca sin nada para procesar
@@ -457,7 +457,7 @@ thread vehiculo(int identificador){
 }
 ```
 
-TODO: Preguntar si una maquina puede hacer carga, procesamiento y descarga simultaneamente, la consigna esta medio floja de papeles. 
+TODO: Preguntar si una máquina puede hacer carga, procesamiento y descarga simultáneamente, la consigna está medio floja de papeles. 
 
 # Ejercicio 11 
 ## Punto A 
@@ -494,7 +494,7 @@ thread limpieza(){
 ```
 
 ## Punto B 
-Si el prioridad de limpieza tiene prioridad, lo que podemos hacer es agregar un molinete FIFO, que hace que nadie pueda entrar al baño si esta el personal de limpieza esperando, por lo que cuando llega el personal de limpieza va a esperar a que todos los que esten adentro terminen y despues va a entrar el. 
+Si el prioridad de limpieza tiene prioridad, lo que podemos hacer es agregar un molinete FIFO, que hace que nadie pueda entrar al baño si está el personal de limpieza esperando, por lo que cuando llega el personal de limpieza va a esperar a que todos los que estén adentro terminen y después va a entrar él. 
 
 ```java
 global int personasEnElBaño = 0;
@@ -578,11 +578,11 @@ thread limpieza(){
 }
 ```
 
-TODO: Arreglar, no esta bien pq le pueden ganar el acceso al de limpieza. 
+TODO: Arreglar, no está bien pq le pueden ganar el acceso al de limpieza. 
 
 # Ejercicio 12
 ## Punto A
-Asumo que las dos posibles direcciones/ destinos estan representadas con el cero y el uno. 
+Asumo que las dos posibles direcciones/ destinos están representadas con el cero y el uno. 
 ```java 
 global int[] cantidadAutosCruzando = {0, 0};
 global semaphore[] mutexAutosCruzando = {Semaphore(1), Semaphore(1)};
@@ -594,7 +594,7 @@ thread auto(){
         if(cantidadAutosCruzando[direccionOrigen] == 0){
             acceso.acquire();
         }
-        // Si estoy aca es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
+        // Si estoy acá es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
         cantidadAutosCruzando[direccionOrigen] += 1;
         mutexAutosCruzando[direccionOrigen].release();
     }
@@ -614,14 +614,14 @@ thread auto(){
 }
 ```
 
-La idea seria que cada auto ejecute un dependiendo de la direccion en la que parte: 
+La idea sería que cada auto ejecute un dependiendo de la dirección en la que parte: 
 ```
 entrarPuente(origen);
 cruzarPuente();
 salirPuente(origen);
 ```
 
-El problema que tiene esta primer solución es que si todo el tiempo entran autos de una dirección, deja en starvation a los autos del otro lado. Para solucionar esto se puede agregar a `entrarPuente` un turnstile que lo que haga es hacer que quien cruza el puente lo determina el orden en el que llego al principio. Es un trade off entre mas serializacion por menos inanicion versus mas inanicion y mas serializacion. 
+El problema que tiene esta primer solución es que si todo el tiempo entran autos de una dirección, deja en starvation a los autos del otro lado. Para solucionar esto se puede agregar a `entrarPuente` un turnstile que lo que haga es hacer que quien cruza el puente lo determina el orden en el que llegó al principio. Es un trade off entre más serialización por menos inanición versus más inanición y más serialización. 
 
 ```java 
 global int[] cantidadAutosCruzando = {0, 0};
@@ -636,7 +636,7 @@ thread auto(){
         if(cantidadAutosCruzando[direccionOrigen] == 0){
             acceso.acquire();
         }
-        // Si estoy aca es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
+        // Si estoy acá es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
         cantidadAutosCruzando[direccionOrigen] += 1;
         mutexAutosCruzando[direccionOrigen].release();
         turnstile.release();
@@ -670,7 +670,7 @@ thread auto(){
         if(cantidadAutosCruzando[direccionOrigen] == 0){
             acceso.acquire();
         }
-        // Si estoy aca es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
+        // Si estoy acá es o porque ya tenia el acceso de antes mi lado o lo acabo de ganar 
         cantidadAutosCruzando[direccionOrigen] += 1;
         mutexAutosCruzando[direccionOrigen].release();
         autosCruzando.acquire();
@@ -693,6 +693,6 @@ thread auto(){
 ```
 
 ## Punto C 
-La solución propuesta no es libre de inanición, si empiezan cruzando los autos de una dirección, y constantemente entran autos de esa dirección nunca van a poder pasar los autos de la otra dirección. Para solucionar esto se podría agregar un turnstile como en el inciso A para que no haya inanición, a costo de por ejemplo un caso que si de un lado tenemos 3 autos pero llego primero uno del otro lado, va a pasar primero ese auto en vez de los 3 autos del otro lado que son más.
+La solución propuesta no es libre de inanición, si empiezan cruzando los autos de una dirección, y constantemente entran autos de esa dirección nunca van a poder pasar los autos de la otra dirección. Para solucionar esto se podría agregar un turnstile como en el inciso A para que no haya inanición, a costo de por ejemplo un caso que si de un lado tenemos 3 autos pero llegó primero uno del otro lado, va a pasar primero ese auto en vez de los 3 autos del otro lado que son más.
 
-El limite de que solo puedan cruzar 3 a la vez no impide que haya inanición por el modo en el que se maneja el cambio de lado.
+El límite de que solo puedan cruzar 3 a la vez no impide que haya inanición por el modo en el que se maneja el cambio de lado.

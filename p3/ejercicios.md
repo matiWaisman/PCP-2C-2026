@@ -4,25 +4,25 @@ Si la disciplina utilizada es la de Hoare "signal y espera urgente", esta soluci
 
 Una traza que lo rompe es una en la que el thread que ejecuta `antesydespues` llega primero al monitor. En ese caso, entra, hace la parte de `antes`, y cuando llega a `permiso.signal()`, como todavía no hay nadie esperando en la condition `permiso`, el signal no tiene ningún efecto (no despierta a nadie porque no hay nadie en la cola). El thread simplemente sigue ejecutando dentro del monitor y hace `despues`, sin que `importante` se haya ejecutado nunca.
 
-Ademas de la falla en la sincronizacion, cuando el otro thread finalmente llega y ejecuta `importante()`, al hacer `permiso.wait()` queda bloqueado para siempre, porque ya nadie va a volver a hacer `signal()` sobre esa condition. Es decir, no solo se rompe el orden pedido, sino que se produce un deadlock.
+Además de la falla en la sincronización, cuando el otro thread finalmente llega y ejecuta `importante()`, al hacer `permiso.wait()` queda bloqueado para siempre, porque ya nadie va a volver a hacer `signal()` sobre esa condition. Es decir, no solo se rompe el orden pedido, sino que se produce un deadlock.
 
 Si siempre el primer thread en entrar al monitor fuera el que ejecuta `importante`, ahí sí se cumpliría el requerimiento — pero el enunciado no garantiza ningún orden de llegada entre los dos threads.
 
 ## Punto B 
-Si la disciplina utilizada es "signal y continua", tenemos exactamente el mismo problema que el caso anterior. 
+Si la disciplina utilizada es "signal y continúa", tenemos exactamente el mismo problema que el caso anterior. 
 
-Pero tampoco funciona si el orden de ejecucion es primero el thread que hace `importante()` y luego el que hace `antesydespues()`, lo unico que pasa en ese caso es que el que hace `antesydespues()` no va a quedar en deadlock. Pero el orden no se va a respetar porque: 
+Pero tampoco funciona si el orden de ejecución es primero el thread que hace `importante()` y luego el que hace `antesydespues()`, lo único que pasa en ese caso es que el que hace `antesydespues()` no va a quedar en deadlock. Pero el orden no se va a respetar porque: 
 
 - El thread `b` entra al monitor y ejecuta `importante()`.
-    - Se cuelga en `permiso.wait()`, asi que se bloquea y libera el monitor. 
+    - Se cuelga en `permiso.wait()`, así que se bloquea y libera el monitor. 
 - El thread `a` entra al monitor y ejecuta `antesydespues()`. 
     - Ejecuta la parte del antes. 
-    - Ejecuta `permiso.signal()`, pero como es "signal y continua" no va a abandonar el monitor y cederselo a `b`, si no que va a seguir ejecutando.
-    - Ejecuta la parte de despues, incumpliendo el orden. 
+    - Ejecuta `permiso.signal()`, pero como es "signal y continúa" no va a abandonar el monitor y cedérselo a `b`, si no que va a seguir ejecutando.
+    - Ejecuta la parte de después, incumpliendo el orden. 
     - Abandona el monitor.
 - El thread `b` vuelve y ejecuta la parte importante. 
 
-En este caso tenemos una traza valida en la que el orden de ejecución es: `antes->despues->importante`.
+En este caso tenemos una traza válida en la que el orden de ejecución es: `antes->despues->importante`.
 
 # Ejercicio 2 
 Primera idea con signal y continue:
@@ -62,7 +62,7 @@ monitor SecuenciadorTernario{
 }
 ```
 
-Una mejor opcion con tres condiciones distintas para no tener que despertar a todos: 
+Una mejor opción con tres condiciones distintas para no tener que despertar a todos: 
 ```java
 monitor SecuenciadorTernario{
     int turnoActual = 1;
@@ -101,7 +101,7 @@ monitor SecuenciadorTernario{
 }
 ```
 
-Una solucion posible si se usa signal and wait puede ser: 
+Una solución posible si se usa signal and wait puede ser: 
 
 ```java
 monitor SecuenciadorTernario{
@@ -186,7 +186,7 @@ Un primer approach puede ser:
         }
     }
     ```
-- Si quiero que no se haga un `signalAll` si no que se vayan levantando uno por uno una solucion usando signal and continue puede ser: 
+- Si quiero que no se haga un `signalAll` si no que se vayan levantando uno por uno una solución usando signal and continue puede ser: 
     ```java
     monitor Barrera(int N){
         int contador = 0;
@@ -238,7 +238,7 @@ Un primer approach puede ser:
         }
     }
     ```
-- Con signal and continue, si usamos un `signalAll`, ya no nos sirve hacer un `while` pidiendo que el contador sea igual a `N`, porque justamente en el codigo anterior el contador se reinicia, haciendo que se bloqueen todos los procesos. Por lo tanto: 
+- Con signal and continue, si usamos un `signalAll`, ya no nos sirve hacer un `while` pidiendo que el contador sea igual a `N`, porque justamente en el código anterior el contador se reinicia, haciendo que se bloqueen todos los procesos. Por lo tanto: 
     ```java
     monitor Barrera(int N){
         int contador = 0;
@@ -266,9 +266,9 @@ Un primer approach puede ser:
     ```
 # Ejercicio 4 
 ## Punto A 
-Para que ocurra que `liberar` nunca se bloquee, obligatoriamente hay que usar signal and continue, porque en signal and wait siempre que le demos un signal con alguien esperando, el thread que esta en `liberar` va a dejar que termine el otro thread antes. 
+Para que ocurra que `liberar` nunca se bloquee, obligatoriamente hay que usar signal and continue, porque en signal and wait siempre que le demos un signal con alguien esperando, el thread que está en `liberar` va a dejar que termine el otro thread antes. 
 
-Tambien para esta solución asumo que no pueden haber sporious wakeups. Si los hubiera habría que complejizar el `esperar` haciendo que haga un loop sobre un while, y en ese caso si que puede pasar que alguien que acaba de entrar pase derecho y se saltee a alguien que estaba dormido. 
+También para esta solución asumo que no pueden haber sporious wakeups. Si los hubiera habría que complejizar el `esperar` haciendo que haga un loop sobre un while, y en ese caso sí que puede pasar que alguien que acaba de entrar pase derecho y se saltee a alguien que estaba dormido. 
 
 ```java
 Monitor Atrapador{
@@ -292,9 +292,9 @@ Monitor Atrapador{
 }
 ```
 
-Por como funcionan los monitores y las variables de condicion, no puede ocurrir que un thread `T2` "no tenga que esperar", si o si una vez que ejecute el `wait` va a ceder el acceso al monitor y va a tener que esperar a que un thread ejecute `liberar` y haya los suficientes threads para despertar en ese llamado. 
+Por como funcionan los monitores y las variables de condición, no puede ocurrir que un thread `T2` "no tenga que esperar", sí o sí una vez que ejecute el `wait` va a ceder el acceso al monitor y va a tener que esperar a que un thread ejecute `liberar` y haya los suficientes threads para despertar en ese llamado. 
 
-Lo que si puede ocurrir es si por ejemplo `T1` llama a `esperar`, y luego `T2` llama a `esperar`, y despues otro thread los despierta a los dos, por mas que `T1` va a ser despertado antes que `T2` porque las condiciones son colas FIFO, nada le garantiza a cada una el orden en el que van a volver a ejecutar, ya que van a tener que pelearse por el acceso al monitor con el resto de los threads sin un orden. Por lo que `T2` puede "terminar" la ejecucion de `esperar` antes que `T1` por mas que `T1` la inicio antes. 
+Lo que sí puede ocurrir es si por ejemplo `T1` llama a `esperar`, y luego `T2` llama a `esperar`, y después otro thread los despierta a los dos, por más que `T1` va a ser despertado antes que `T2` porque las condiciones son colas FIFO, nada le garantiza a cada una el orden en el que van a volver a ejecutar, ya que van a tener que pelearse por el acceso al monitor con el resto de los threads sin un orden. Por lo que `T2` puede "terminar" la ejecución de `esperar` antes que `T1` por más que `T1` la inicio antes. 
 
 ## Punto B 
 Usando signal and continue una primera solución puede ser:
@@ -324,7 +324,7 @@ Monitor Atrapador{
         while(cantidadEsperando < N){
             wait(hayProcesosSuficientesParaLiberar);
         }
-        // Hay la cantidad suficiente para liberar, asi que los liberamos uno por uno. 
+        // Hay la cantidad suficiente para liberar, así que los liberamos uno por uno. 
         for(int i = 0; i < N; i++){
             signal(esperar);
             cantidadEsperando--;
@@ -334,9 +334,9 @@ Monitor Atrapador{
     }
 }
 ```
-Es necesario usar el semaforo para indicar si hay un liberador, porque si no mientras el liberador esta dormido o incluso alguien lo despierta y tiene que volver a esperar para entrar al monitor, en el medio alguien le puede ganar de manos y entrar al monitor y pisarle cuantos esta esperando para liberar, por lo que si vuelve a entrar el liberador original le va a pisar el valor compartido de cuantos estaba esperando para liberar, haciendo que deje de tener sentido la variable compartida. 
+Es necesario usar el semáforo para indicar si hay un liberador, porque si no mientras el liberador está dormido o incluso alguien lo despierta y tiene que volver a esperar para entrar al monitor, en el medio alguien le puede ganar de manos y entrar al monitor y pisarle cuántos está esperando para liberar, por lo que si vuelve a entrar el liberador original le va a pisar el valor compartido de cuántos estaba esperando para liberar, haciendo que deje de tener sentido la variable compartida. 
 
-Otra solución lo que puede hacer es en vez de hacer que quien es el liberador sea estrictamente FIFO, y si hay algun liberador que ya puede liberar se tenga que quedar esperando, podemos hacer que todos los liberadores se duerman en la misma variable de condición y se tire un `signalAll` en cada paso, si algún liberador al despertarte puede liberar, lo va a hacer.  
+Otra solución lo que puede hacer es en vez de hacer que quien es el liberador sea estrictamente FIFO, y si hay algún liberador que ya puede liberar se tenga que quedar esperando, podemos hacer que todos los liberadores se duerman en la misma variable de condición y se tire un `signalAll` en cada paso, si algún liberador al despertarte puede liberar, lo va a hacer.  
 
 ```java
 Monitor Atrapador{
@@ -354,7 +354,7 @@ Monitor Atrapador{
         while(cantidadEsperando < N){
             wait(hayProcesosSuficientesParaLiberar);
         }
-        // Hay la cantidad suficiente para liberar, asi que los liberamos uno por uno. 
+        // Hay la cantidad suficiente para liberar, así que los liberamos uno por uno. 
         for(int i = 0; i < N; i++){
             signal(esperar);
             cantidadEsperando--;
@@ -366,13 +366,13 @@ Monitor Atrapador{
 
 Una solución para no tener que hacer `signalAll` cada vez que algún proceso se va a dormir, independientemente de si hay la cantidad suficiente de procesos dormidos para que al menos un liberador pueda trabajar, lo que podemos hacer es tener un set de cantidades necesarias para que al menos un liberador pueda trabajar, si la cantidad actual pertenece a ese conjunto despertamos a todos, pero sabemos que al menos uno va a poder trabajar.
 
-Para poder usar un conjunto, como puede pasar que dos liberadores distintos quieran liberar a la misma cantidad de procesos, tenemos que en el conjunto en vez de meter numeros enteros tenemos que meter tuplas que la primer componente represente el numero de procesos que tiene que despertar, y el segundo la aparicion de ese elemento dentro del conjunto. 
+Para poder usar un conjunto, como puede pasar que dos liberadores distintos quieran liberar a la misma cantidad de procesos, tenemos que en el conjunto en vez de meter números enteros tenemos que meter tuplas que la primer componente represente el número de procesos que tiene que despertar, y el segundo la aparición de ese elemento dentro del conjunto. 
 
 Si no hacemos esto si dos liberadores distintos quieren liberar a `N` procesos, el primero que lo haga va a despertarlos y a eliminar `N` del conjunto, dejando en deadlock al segundo proceso.
 
 Supongo que tengo implementada una función `perteneceAPrimerComponente(Set<(int, int)> cjto, int e)` que devuelve verdadero si `e` es una primer componente del conjunto, falso si no. 
 
-Supongo que tengo implementada una función `siguienteIndiceDeElemento(Set<(int, int)> cjto, int e)` que devuelve el siguiente indice de un elemento dentro de un conjunto. Por ejemplo si el conjunto es `{(3,0), (2,1), (3,1)}` va a devolver 2, porque el siguiente indice para el 3 libre es el 2. Para implementarlo lo que se podría hacer es un for donde preguntas si `(e, 0)` pertenece, si pertenece preguntas si pertenece `(e,1)` asi hasta que sea falso que encontramos nuestro indice. 
+Supongo que tengo implementada una función `siguienteIndiceDeElemento(Set<(int, int)> cjto, int e)` que devuelve el siguiente índice de un elemento dentro de un conjunto. Por ejemplo si el conjunto es `{(3,0), (2,1), (3,1)}` va a devolver 2, porque el siguiente índice para el 3 libre es el 2. Para implementarlo lo que se podría hacer es un for donde preguntas si `(e, 0)` pertenece, si pertenece preguntas si pertenece `(e,1)` así hasta que sea falso que encontramos nuestro índice. 
 
 ```java
 Monitor Atrapador{
@@ -395,7 +395,7 @@ Monitor Atrapador{
         while(cantidadEsperando < N){
             wait(hayProcesosSuficientesParaLiberar);
         }
-        // Hay la cantidad suficiente para liberar, asi que los liberamos uno por uno. 
+        // Hay la cantidad suficiente para liberar, así que los liberamos uno por uno. 
         for(int i = 0; i < N; i++){
             signal(esperar);
             cantidadEsperando--;
@@ -406,10 +406,10 @@ Monitor Atrapador{
 }
 ```
 
-TODO: Solucion sin signalAll. 
+TODO: Solución sin signalAll. 
 
 # Ejercicio 5 
-Asumo que no hay una cota de sillas de espera, o de personas que pueden estar esperando y que puede haber mas de un peluquero a la vez cortando. 
+Asumo que no hay una cota de sillas de espera, o de personas que pueden estar esperando y que puede haber más de un peluquero a la vez cortando. 
 ```java
 Monitor Pelu(){
     condition hayCliente; 
@@ -419,8 +419,8 @@ Monitor Pelu(){
     int cantidadPersonasEsperando = 0;
     int proximoNumeroDeCorte = 0;
     int proximoNumeroAAtender = 0;
-    Set<int> numerosLlamados = {};      // turnos ya tomados por algun peluquero
-    Set<int> cortesTerminados = {};     // turnos cuyo corte ya termino
+    Set<int> numerosLlamados = {};      // turnos ya tomados por algún peluquero
+    Set<int> cortesTerminados = {};     // turnos cuyo corte ya terminó
 
     local int numeroClienteSiendoAtendido = -1;
 
@@ -460,18 +460,18 @@ Monitor Pelu(){
 ```
 
 ## Punto B
-Si hay que usar una sola variable de condicion, se podría reemplazar el código actual y en todas las variables de condición usar una sola y el código seguiria funcionando, ya que siempre que alguien se despierta verifica que se cumpla una condición, así que si alguien se despierta y ve que su condición no se cumple se va a volver a dormir. 
+Si hay que usar una sola variable de condición, se podría reemplazar el código actual y en todas las variables de condición usar una sola y el código seguiría funcionando, ya que siempre que alguien se despierta verifica que se cumpla una condición, así que si alguien se despierta y ve que su condición no se cumple se va a volver a dormir. 
 
-Va a ser mucho mas ineficiente la ejecución porque al hacer un `signalAll` siempre sobre la misma cola van a estar todo el tiempo despertandose procesos y consumiendo computo procesos que siguen sin tener los recursos necesarios desbloqueados. Para evitar esto se podrían implementar colas de semaforos para cosas como por ejemplo el manejo de cuando un peluquero le esta cortando al cliente el cliente se duerma en ese semaforo en particular y que el peluquero lo despierte a el solo al terminar el corte. 
+Va a ser mucho más ineficiente la ejecución porque al hacer un `signalAll` siempre sobre la misma cola van a estar todo el tiempo despertándose procesos y consumiendo cómputo procesos que siguen sin tener los recursos necesarios desbloqueados. Para evitar esto se podrían implementar colas de semáforos para cosas como por ejemplo el manejo de cuando un peluquero le está cortando al cliente el cliente se duerma en ese semáforo en particular y que el peluquero lo despierte a el solo al terminar el corte. 
 
 # Ejercicio 6
 ## Punto A
 Asumo por lo que dice la consigna que siempre va a haber un solo orador que va repitiendo la charla. 
 
-La idea del monitor es que van a haber cuatro metodos, para los asistentes `entrarASala`, `salirSala`, `comenzarCharla` y `terminarCharla`. 
+La idea del monitor es que van a haber cuatro métodos, para los asistentes `entrarASala`, `salirSala`, `comenzarCharla` y `terminarCharla`. 
 
 La idea va a ser que: 
-- En `entrarSala` si hay alguien hablando la persona se va a quedar esperando afuera hasta que la charla termine, y si la charla termino pero todavia hay 50 personas dentro, va a tener que seguir esperando. Una vez que entramos vamos a tener que marcar que somos una persona mas dentro incrementando la variable compartida que dice la cantidad de gente que hay.
+- En `entrarSala` si hay alguien hablando la persona se va a quedar esperando afuera hasta que la charla termine, y si la charla terminó pero todavía hay 50 personas dentro, va a tener que seguir esperando. Una vez que entramos vamos a tener que marcar que somos una persona más dentro incrementando la variable compartida que dice la cantidad de gente que hay.
 - En `salirSala` si hay alguien hablando vamos a tener que esperar hasta que termine, y una vez podamos salir antes de salir vamos a decrementar en uno la cantidad de gente dentro de la sala. 
 - En `comenzarCharla` va a primero que verificar que haya al menos una persona, si no lo hay descansa 5 minutos mientras el resto de la gente puede entrar, por lo que hay que liberar el acceso al monitor. 
 - En `finalizarCharla` va a tener que obligatoriamente descansar 5 minutos, y mientras tanto liberar el monitor para que pueda entrar y salir gente. 
@@ -492,13 +492,13 @@ Monitor Conferencia(){
                 wait(terminoCharla);
             }
             else if(cantidadAsistentes >= 50){
-                wait(hayLugar); // Si alguien se despierta de aca, va a tener que verificar primero que no haya charla y que haya lugar para salir del ciclo.
+                wait(hayLugar); // Si alguien se despierta de acá, va a tener que verificar primero que no haya charla y que haya lugar para salir del ciclo.
             }
             else{
                 break;
             }
         }
-        // Si estoy aca es pq entre 
+        // Si estoy acá es pq entré 
         cantidadAsistentes += 1;
     }
 
@@ -506,7 +506,7 @@ Monitor Conferencia(){
         while(hayCharla){
             wait(terminoCharla);
         }
-        // Si estoy aca es pq sali 
+        // Si estoy acá es pq salí 
         cantidadAsistentes -= 1;
         signalAll(hayLugar);
     }
@@ -515,7 +515,7 @@ Monitor Conferencia(){
         if(cantidadAsistentes == 0){
             return false;
         }
-        // Hay gente asi que cerramos la puerta 
+        // Hay gente así que cerramos la puerta 
         hayCharla = true; 
         return true; 
     }
@@ -543,10 +543,10 @@ Thread orador(Conferencia conferencia) {
 }
 ```
 
-Para que una persona no se pueda ir entre que entra la sala y que termina la charla, con una variable local de la persona que sea el numero de charla actual, y tengo otra variable global que es el numero de charla, y que para salir tiene que hacer un wait a una variable de condicion encerrada en un ciclo que pida que el numero de charla por empezar tiene que ser estrictamente mayor al numero de charla en la que entro por primera vez.  
+Para que una persona no se pueda ir entre que entra la sala y que termina la charla, con una variable local de la persona que sea el número de charla actual, y tengo otra variable global que es el número de charla, y que para salir tiene que hacer un wait a una variable de condición encerrada en un ciclo que pida que el número de charla por empezar tiene que ser estrictamente mayor al número de charla en la que entró por primera vez.  
 
 ## Punto B
-Si ahora hay 3 personas que se van a "pelear" por dar la charla, pero no van a hacer mas los oradores los 5 minutos de descanso al finalizar la charla o esperar 5 minutos si no hay nadie, si no que una vez que logren entrar al auditorio van a esperar a que hayan 40 personas y ahí van a arrancar la charla. 
+Si ahora hay 3 personas que se van a "pelear" por dar la charla, pero no van a hacer más los oradores los 5 minutos de descanso al finalizar la charla o esperar 5 minutos si no hay nadie, si no que una vez que logren entrar al auditorio van a esperar a que hayan 40 personas y ahí van a arrancar la charla. 
 
 ```java 
 Monitor Conferencia(){
@@ -574,7 +574,7 @@ Monitor Conferencia(){
                 break;
             }
         }
-        // Si estoy aca es pq entre
+        // Si estoy acá es pq entré
         cantidadAsistentes += 1;
         if(cantidadAsistentes == MIN_PARA_ARRANCAR){
             signal(haySuficienteGenteParaEmpezar);
@@ -585,7 +585,7 @@ Monitor Conferencia(){
         while(hayCharla){
             wait(terminoCharla);
         }
-        // Si estoy aca es pq sali
+        // Si estoy acá es pq salí
         cantidadAsistentes -= 1;
         signalAll(hayLugar);
     }
@@ -594,12 +594,12 @@ Monitor Conferencia(){
         while(hayOradorPresente){
             wait(hayOrador);
         }
-        // Si estamos aca es pq ganamos la carrera y somos el orador actual
+        // Si estamos acá es pq ganamos la carrera y somos el orador actual
         hayOradorPresente = true;
         while(cantidadAsistentes < MIN_PARA_ARRANCAR){
             wait(haySuficienteGenteParaEmpezar);
         }
-        // Hay la cantidad de gente deseada asi que cerramos la puerta
+        // Hay la cantidad de gente deseada así que cerramos la puerta
         hayCharla = true;
     }
 
@@ -622,7 +622,7 @@ Thread orador(Conferencia conferencia) {
 }
 ```
 
-Para evitar que una persona se quede encerrada dentro de las charlas infinitamente o que siempre gane un orador y de la charla siempre el se podría implementar un turnstile para ordenar quienes entran al semaforo, de forma que por ejemplo una persona que quiere irse de la charla tiene que esperar a lo sumo a 3 charlas para irse en un peor caso. 
+Para evitar que una persona se quede encerrada dentro de las charlas infinitamente o que siempre gane un orador y dé la charla siempre él se podría implementar un turnstile para ordenar quienes entran al semáforo, de forma que por ejemplo una persona que quiere irse de la charla tiene que esperar a lo sumo a 3 charlas para irse en un peor caso. 
 
 
 # Ejercicio 7 
@@ -684,10 +684,10 @@ monitor Juego(String palabra) {
 ```
 
 # Ejercicio 8
-Asumo que la barra no tiene un tamaño acotado en el que por ejemplo el pizzero no puede poner mas de `n` pizzas. 
+Asumo que la barra no tiene un tamaño acotado en el que por ejemplo el pizzero no puede poner más de `n` pizzas. 
 
-Para modelarlo, vamos a usar un solo monitor que va a ser la barra, que va a tener para los clientes el metodo `tomarComida` que va a ver que pizzas hay en la barra, si hay una grande va a tomar esa pizza grande, y si no va a tomar dos chicas. Si no hay ni dos chicas ni una grande va a esperar a que haya alguna de las dos combinaciones. 
-El pizzero va a interactuar con el monitor por medio de dos metodos, `depositarGrande` que va a representar que pone una grande en la barra y avisa que ya hay una grande para que se peleen los comensales a agarrarla y el metodo `depositarChica` que en caso de que hayan despues de eso al menos dos chicas va a avisarles a todos que hay suficientes pizzas para que agarren. 
+Para modelarlo, vamos a usar un solo monitor que va a ser la barra, que va a tener para los clientes el método `tomarComida` que va a ver que pizzas hay en la barra, si hay una grande va a tomar esa pizza grande, y si no va a tomar dos chicas. Si no hay ni dos chicas ni una grande va a esperar a que haya alguna de las dos combinaciones. 
+El pizzero va a interactuar con el monitor por medio de dos métodos, `depositarGrande` que va a representar que pone una grande en la barra y avisa que ya hay una grande para que se peleen los comensales a agarrarla y el método `depositarChica` que en caso de que hayan después de eso al menos dos chicas va a avisarles a todos que hay suficientes pizzas para que agarren. 
 
 ```java 
 monitor Barra(){
@@ -712,12 +712,12 @@ monitor Barra(){
         while(cantidadGrandes == 0 && cantidadChicas < 2){
             wait(hayPizza);
         }   
-        // Si estoy aca es pq al menos hay una de las dos variedades
+        // Si estoy acá es pq al menos hay una de las dos variedades
         if(cantidadGrandes > 0){
             // Me llevo una grande 
             cantidadGrandes -= 1;
         }
-        else{ // Si o si hay dos chicas
+        else{ // Sí o sí hay dos chicas
             cantidadChicas -= 2; 
         }
     }
@@ -727,7 +727,7 @@ monitor Barra(){
 Para que el pizzero no tenga starvation para intentar acceder al monitor, en la interacción de los threads con el monitor se puede usar un esquema de lectores escritores con prioridad del escritor. 
 
 # Ejercicio 9 
-El monitor va a tener los metodos: 
+El monitor va a tener los métodos: 
 - `darAutorizacion`
 - `subirseAlBote` 
 - `bajarseDelBote` 
@@ -803,7 +803,7 @@ monitor Bote(int capacidadMaxima){
                 wait(terminoDescarga);
             }
         }
-        // Si estamos aca es pq nos subimos al bote, ya que esta en la misma costa que nosotros y hay lugar
+        // Si estamos acá es pq nos subimos al bote, ya que está en la misma costa que nosotros y hay lugar
         cantidadPersonasEnElBote += 1;
         if(cantidadPersonasEnElBote == capacidadMaxima){
             signal(hayGenteParaPartir);
@@ -819,7 +819,7 @@ monitor Bote(int capacidadMaxima){
                 wait(llegoCostaSur);
             }
         }
-        // Si estoy aca es pq me baje  
+        // Si estoy acá es pq me baje  
         cantidadPersonasEnElBote -= 1;
         if(cantidadPersonasEnElBote == 0){
             estaDescargandose = false;
