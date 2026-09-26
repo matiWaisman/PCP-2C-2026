@@ -200,7 +200,7 @@ Asumo que hay un solo lugar donde se dejan todos los discos (un rack central) y 
 
 Los recursos compartidos son: las cuatro máquinas (cada una independiente de las demás) y el rack de discos, que es un único recurso compartido por todos los clientes y todas las máquinas. Los agentes activos son los clientes del gimnasio, cada uno con una rutina propia: una lista finita de pasos, donde cada paso indica qué máquina usar y cuántos discos necesita para ese ejercicio. La rutina puede repetir máquinas o no usar alguna.
 
-Para sincronizar el acceso propongo un mutex por máquina (cuatro en total, uno por aparato) y un semáforo contador para el rack de discos, inicializado con la cantidad total de discos disponibles. Cada vez que un cliente necesita discos, hace un `acquire` de tantos permisos como discos precise; al devolverlos, hace el `release` correspondiente.
+Para sincronizar el acceso propongo un mutex por máquina (cuatro en total, uno por aparato) y un semáforo contador para el rack de discos, inicializado con la cantidad total de discos disponibles. Cada vez que un cliente necesita discos, hace un `acquire` de tantos permisos como discos precise; al devolverlos, hace el `release` correspondiente. Es importante notar que esta solución funciona porque hacer `semaphore.acquire(n)` en java es atomico, o se toman los n permisos o ninguno, si no fuera así podría ocurrir un deadlock. 
 
 Para cada paso de su rutina, un cliente:
 1. Espera a que la máquina que necesita esté libre (`acquire` del mutex de esa máquina).
@@ -429,9 +429,11 @@ thread maquina(int identificador){
     
     void descargar(){
         maquinaRecibioMateriaPrima[currentThread.id()].acquire();
+        
     }
 
     void procesar(){
+
         // Hace algo
     }
 
@@ -456,10 +458,8 @@ thread vehiculo(int identificador){
     }
 }
 ```
-
-TODO: Preguntar si una máquina puede hacer carga, procesamiento y descarga simultáneamente, la consigna está medio floja de papeles. 
-
-# Ejercicio 11 
+# Ejercicio 11
+El ejercicio es similar al de lectores escritores, donde la gente que usa el baño son los lectores, y el personal de limpieza el escritor.  
 ## Punto A 
 ```java
 global int personasEnElBaño = 0;
@@ -535,51 +535,42 @@ thread limpieza(){
 ```
 
 ## Punto C
-```java
-global int personasEnToilette = 0;
-global boolean hayLimpieza = false;
+```java 
+global int personasEnElBaño = 0;
 
-global semaphore molinete = Semaphore(1, True);
-global semaphore mutexPT = Semaphore(1);
+global semaphore mutexPB = Semaphore(1);
 global semaphore baños = Semaphore(8);
 global semaphore acceso = Semaphore(1);
+global semaphore molinete = Semaphore(1, true);
 
 thread persona(){
+    baños.acquire();
     molinete.acquire();
     molinete.release();
-    mutexPT.acquire();
-    if(hayLimpieza || personasEnToilette == 0){
+    mutexPB.acquire();
+    personasEnElBaño += 1;
+    if(personasEnElBaño == 1){
         acceso.acquire();
     }
-    mutexPT.release();
-    baños.acquire();
-    mutexPT.acquire();
-    personasEnToilette += 1;
-    mutexPT.release();
+    mutexPB.release();
     print("Haciendo pichin");
-    mutexPT.acquire();
-    personasEnToilette -= 1; 
-    baños.release();
-    if(hayLimpieza || personasEnToilette == 0){
+    mutexPB.acquire();
+    personasEnElBaño -= 1; 
+    if(personasEnElBaño == 0){
         acceso.release();
     }
-    mutexPT.release();
-    
+    mutexPB.release();
+    baños.release();
 }
 
 thread limpieza(){
     molinete.acquire();
-    hayLimpieza = true;
     acceso.acquire();
     print("Limpiando");
-    hayLimpieza = false;
     molinete.release();
     acceso.release();
 }
 ```
-
-TODO: Arreglar, no está bien pq le pueden ganar el acceso al de limpieza. 
-
 # Ejercicio 12
 ## Punto A
 Asumo que las dos posibles direcciones/ destinos están representadas con el cero y el uno. 
@@ -621,7 +612,7 @@ cruzarPuente();
 salirPuente(origen);
 ```
 
-El problema que tiene esta primer solución es que si todo el tiempo entran autos de una dirección, deja en starvation a los autos del otro lado. Para solucionar esto se puede agregar a `entrarPuente` un turnstile que lo que haga es hacer que quien cruza el puente lo determina el orden en el que llegó al principio. Es un trade off entre más serialización por menos inanición versus más inanición y más serialización. 
+El problema que tiene esta primer solución es que si todo el tiempo entran autos de una dirección, deja en starvation a los autos del otro lado. Para solucionar esto se puede agregar a `entrarPuente` un turnstile que lo que haga es hacer que quien cruza el puente lo determina el orden en el que llegó al principio. Es un trade off entre más serialización por menos inanición versus menos inanición y más serialización. 
 
 ```java 
 global int[] cantidadAutosCruzando = {0, 0};

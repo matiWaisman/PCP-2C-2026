@@ -334,7 +334,9 @@ Monitor Atrapador{
     }
 }
 ```
-Es necesario usar el semáforo para indicar si hay un liberador, porque si no mientras el liberador está dormido o incluso alguien lo despierta y tiene que volver a esperar para entrar al monitor, en el medio alguien le puede ganar de manos y entrar al monitor y pisarle cuántos está esperando para liberar, por lo que si vuelve a entrar el liberador original le va a pisar el valor compartido de cuántos estaba esperando para liberar, haciendo que deje de tener sentido la variable compartida. 
+Es necesario usar la variable de condición `puedeLiberar` para indicar si hay un liberador, porque si no mientras el liberador está dormido o incluso alguien lo despierta y tiene que volver a esperar para entrar al monitor, en el medio alguien le puede ganar de manos y entrar al monitor y pisarle cuántos está esperando para liberar, por lo que si vuelve a entrar el liberador original le va a pisar el valor compartido de cuántos estaba esperando para liberar, haciendo que deje de tener sentido la variable compartida. 
+
+El problema de esta solución es que secuencializa demasiado el proceso de liberar y pueden haber casos donde varios procesos podrían liberar y no lo hacen porque adelante en la fila tienen a un proceso haciendo un cuello de botella porque precisa liberar a demasiados para poder terminar. 
 
 Otra solución lo que puede hacer es en vez de hacer que quien es el liberador sea estrictamente FIFO, y si hay algún liberador que ya puede liberar se tenga que quedar esperando, podemos hacer que todos los liberadores se duerman en la misma variable de condición y se tire un `signalAll` en cada paso, si algún liberador al despertarte puede liberar, lo va a hacer.  
 
@@ -364,11 +366,13 @@ Monitor Atrapador{
 }
 ```
 
+El problema de esta solución es que estamos despertando a todos los procesos cada vez, cuando ni siquiera chequeamos si al menos uno puede liberar.
+
 Una solución para no tener que hacer `signalAll` cada vez que algún proceso se va a dormir, independientemente de si hay la cantidad suficiente de procesos dormidos para que al menos un liberador pueda trabajar, lo que podemos hacer es tener un set de cantidades necesarias para que al menos un liberador pueda trabajar, si la cantidad actual pertenece a ese conjunto despertamos a todos, pero sabemos que al menos uno va a poder trabajar.
 
-Para poder usar un conjunto, como puede pasar que dos liberadores distintos quieran liberar a la misma cantidad de procesos, tenemos que en el conjunto en vez de meter números enteros tenemos que meter tuplas que la primer componente represente el número de procesos que tiene que despertar, y el segundo la aparición de ese elemento dentro del conjunto. 
+Para poder usar un conjunto, como puede pasar que dos liberadores distintos quieran liberar a la misma cantidad de procesos, tenemos que en el conjunto en vez de meter números enteros tenemos que meter tuplas que la primer componente represente el número de procesos que tiene que despertar, y el segundo el id del thread que los quiere eliminar.
 
-Si no hacemos esto si dos liberadores distintos quieren liberar a `N` procesos, el primero que lo haga va a despertarlos y a eliminar `N` del conjunto, dejando en deadlock al segundo proceso.
+Si no hacemos esto y el conjunto solo tiene las cantidades que quieren eliminar, si dos liberadores distintos quieren liberar a `N` procesos, el primero que lo haga va a despertarlos y a eliminar `N` del conjunto, potencialmente dejando en deadlock al segundo proceso. 
 
 Supongo que tengo implementada una función `perteneceAPrimerComponente(Set<(int, int)> cjto, int e)` que devuelve verdadero si `e` es una primer componente del conjunto, falso si no. 
 
@@ -390,8 +394,8 @@ Monitor Atrapador{
     }
 
     void liberar(int N){
-        int indice = siguienteIndiceDeElemento(cantidadesNecesarias, N);
-        cantidadesNecesarias.add((N, indice));
+        int idThread = thread.currentId(); // Identificador único del thread que invoca liberar
+        cantidadesNecesarias.add((N, idThread));
         while(cantidadEsperando < N){
             wait(hayProcesosSuficientesParaLiberar);
         }
@@ -400,13 +404,13 @@ Monitor Atrapador{
             signal(esperar);
             cantidadEsperando--;
         }
-        cantidadesNecesarias.remove((N, indice));
+        cantidadesNecesarias.remove((N, idThread));
         signal(puedeLiberar);
     }
 }
 ```
 
-TODO: Solución sin signalAll. 
+Una solución sin signalAll haciendo que se despierte exactamente al proceso que puede liberar puede ser tambien usando la idea de conjuntos, que en vez de agregar tuplas `(cantidadEsperando, idThread)` podemos hacer que el conjunto, o array o lista, tenga dentro `(cantidadEsperando, semaforo)` o `(cantidadEsperando, condicion)` de modo que cuando un thread que va a esperar ve que con la cantidad actual algun liberador puede trabajar, lo va a despertar a ese en particular y no potencialmente a muchos otros que se van a volver a dormir. 
 
 # Ejercicio 5 
 Asumo que no hay una cota de sillas de espera, o de personas que pueden estar esperando y que puede haber más de un peluquero a la vez cortando. 
@@ -446,7 +450,7 @@ Monitor Pelu(){
         }
         cantidadPersonasEsperando -= 1;
 
-        numeroClienteSiendoAtendido = proximoNumeroAAtender;
+        t = proximoNumeroAAtender;
         proximoNumeroAAtender += 1;
         numerosLlamados.add(numeroClienteSiendoAtendido);
         signalAll(hayPeluquero);   

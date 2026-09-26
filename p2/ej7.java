@@ -12,7 +12,7 @@ public class ej7 {
     public ej7(int cantidadDiscos) {
         rackDiscos = new Semaphore(cantidadDiscos);
         for (int i = 0; i < CANTIDAD_MAQUINAS; i++) {
-            mutexMaquinas[i] = new Semaphore(1); // 1 permiso = mutex binario
+            mutexMaquinas[i] = new Semaphore(1); 
         }
     }
 

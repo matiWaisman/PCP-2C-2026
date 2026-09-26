@@ -9,18 +9,15 @@ public class CaminoUnaVia {
     static int NUM_CARS = 12;
     
     private final int[] cantidadEsperando;
-    private final Semaphore[] s;
     private final Semaphore[] mutexs;
     private Semaphore turnstile = new Semaphore(1, true);
     private Semaphore cambioSentido = new Semaphore(1);
 
     public CaminoUnaVia() {
-        s = new Semaphore[2];
         mutexs = new Semaphore[2];
         cantidadEsperando = new int[2];
 
         for (int direction = 0; direction < 2; direction++) {
-            s[direction] = new Semaphore(0);
             mutexs[direction] = new Semaphore(1);
             cantidadEsperando[direction] = 0;
         }
