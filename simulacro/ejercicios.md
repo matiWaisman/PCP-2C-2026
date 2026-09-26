@@ -38,7 +38,7 @@ Para probar mutex poner como absurdo que hay dos threads en la sección crítica
 
 Para ausencia de deadlock mostrar que ninguno pueda quedarse colgado en el while, separarlo en que sí o sí cuando alguien llega próximo no va a ser igual a -1, y que se va a ir cambiando por cadena. 
 
-Para ausencia de inanhición decir x absurdo que supongamos que nunca ejecuta, entonces tiene que ser pq siempre llegan nuevos, pero eso no puede pasar ninguno se va a quedar sin ejecutar. Si estuvieran dentro de un while true ahí si depende del scheduler. 
+Para ausencia de inanhición decir x absurdo que supongamos que nunca ejecuta, entonces tiene que ser pq siempre llegan nuevos, pero eso no puede pasar ninguno se va a quedar sin ejecutar. Si estuvieran dentro de un while true ahí sí depende del scheduler. 
 
 ## Punto C 
 El problema es que pasa si están ejecutando en más de un core y vos tengas un dato en una caché, y otro núcleo lo pisa. 
@@ -122,16 +122,16 @@ int cuentasEnRojo(){
 Como los locks se toman siempre con el mismo orden, no puede ocurrir un deadlock, ya que se elimina el caso cruzado de que un thread 1 quiere procesar una transferencia con origen 1 y destino 2 produsca un deadlock con una que tiene a origen a 2 y destino 1, ya que ambas van a tomar primero el 1 y luego el 2, entonces el que tome primero el 1 gana y no tiene que esperar para tomar el 2, ya que va a estar libre. 
 
 ## Punto B 
-En la solución del punto anterior puede ocurrir que un pedido que ocurrio antes se procese despues que uno que entro despues, ya que los semaforos en `mutexs` son debiles, de modo que un thread que se queda esperando para modificar un balance puede tener "mala suerte" y que se tarde en darle paso a poder modificar la variable del balance de esa cuenta si todo el tiempo otras transferencias tienen como origen o destino a esa cuenta. 
+En la solución del punto anterior puede ocurrir que un pedido que ocurrió antes se procese después que uno que entró después, ya que los semáforos en `mutexs` son débiles, de modo que un thread que se queda esperando para modificar un balance puede tener "mala suerte" y que se tarde en darle paso a poder modificar la variable del balance de esa cuenta si todo el tiempo otras transferencias tienen como origen o destino a esa cuenta. 
 
-No hay un limite de cuantas veces puede pasar que una transferencia que se empezo antes tenga que esperar a transferencias posteriores que actuan sobre esa cuenta, porque depende de las transferencias que se quieran hacer y de como el scheduler hace los interleavings. 
+No hay un límite de cuántas veces puede pasar que una transferencia que se empezó antes tenga que esperar a transferencias posteriores que actúan sobre esa cuenta, porque depende de las transferencias que se quieran hacer y de cómo el scheduler hace los interleavings. 
 
-Para evitar eso, lo que se puede hacer es que los semaforos de `mutexs` sean fuertes, de forma que siempre la primer transferencia que quiera hacer un movimiento con la cuenta `i` sea la primera en hacerlo. 
+Para evitar eso, lo que se puede hacer es que los semáforos de `mutexs` sean fuertes, de forma que siempre la primer transferencia que quiera hacer un movimiento con la cuenta `i` sea la primera en hacerlo. 
 
 Hacés que todos los semáforos del array sean fuertes y el acceso también. 
 
 ## Punto C
-Tomás la lista de destino y la ordenas, y tomás todos los locks de los destinos en orden y dp hacés las transferencias. 
+Tomás la lista de destino y la ordenás, y tomás todos los locks de los destinos en orden y dp hacés las transferencias. 
 
 No puede haber deadlock al tomar los locks en orden. 
 

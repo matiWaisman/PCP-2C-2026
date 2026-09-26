@@ -1,7 +1,7 @@
 # Ejercicio 1 
 
 - En granularidad gruesa: 
-    - En el `add` si ocurre que un elemento `b` que no pertenece al conjunto tiene el mismo hash que un elemento `a` que si pertenece, cuando en el código se hace `if (key == curr.key) return false`, la comparación ahora debería ser `if (key == curr.key && curr.value == o.value) return false`. 
+    - En el `add` si ocurre que un elemento `b` que no pertenece al conjunto tiene el mismo hash que un elemento `a` que sí pertenece, cuando en el código se hace `if (key == curr.key) return false`, la comparación ahora debería ser `if (key == curr.key && curr.value == o.value) return false`. 
     - En el `remove` no habría que cambiar nada porque la desición de eliminar es con un if por el valor del elemento. 
 - En granularidad fina:
     - En el `remove` no basta con cortar el ciclo cuando encontramos una clave mayor o igual, porque ahora puede haber varios nodos con la misma `key` y distinto `value`. La condición del ciclo debería ser `while(curr.key < key || (curr.key == key && !curr.item.equals(item)))`, así seguimos avanzando mientras la clave sea menor, o mientras la clave sea igual pero el nodo no sea el elemento que buscamos. Una vez afuera del cuerpo del `while` puede ser por dos cosas: o porque encontramos un elemento cuya key es más grande (o sea que el elemento que queremos eliminar no está), o porque encontramos uno con la misma key que además es `equals()` al que buscamos. Por eso el `if` para eliminarlo cambia a `if(curr.key == key && curr.item.equals(item))`: si es ese elemento lo eliminamos, y si no devolvemos falso.

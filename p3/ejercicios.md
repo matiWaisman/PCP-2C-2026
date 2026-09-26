@@ -268,7 +268,7 @@ Un primer approach puede ser:
 ## Punto A 
 Para que ocurra que `liberar` nunca se bloquee, obligatoriamente hay que usar signal and continue, porque en signal and wait siempre que le demos un signal con alguien esperando, el thread que está en `liberar` va a dejar que termine el otro thread antes. 
 
-También para esta solución asumo que no pueden haber sporious wakeups. Si los hubiera habría que complejizar el `esperar` haciendo que haga un loop sobre un while, y en ese caso sí que puede pasar que alguien que acaba de entrar pase derecho y se saltee a alguien que estaba dormido. 
+También para esta solución asumo que no pueden haber spurious wakeups. Si los hubiera habría que complejizar el `esperar` haciendo que haga un loop sobre un while, y en ese caso sí que puede pasar que alguien que acaba de entrar pase derecho y se saltee a alguien que estaba dormido. 
 
 ```java
 Monitor Atrapador{
@@ -292,9 +292,9 @@ Monitor Atrapador{
 }
 ```
 
-Por como funcionan los monitores y las variables de condición, no puede ocurrir que un thread `T2` "no tenga que esperar", sí o sí una vez que ejecute el `wait` va a ceder el acceso al monitor y va a tener que esperar a que un thread ejecute `liberar` y haya los suficientes threads para despertar en ese llamado. 
+Por cómo funcionan los monitores y las variables de condición, no puede ocurrir que un thread `T2` "no tenga que esperar", sí o sí una vez que ejecute el `wait` va a ceder el acceso al monitor y va a tener que esperar a que un thread ejecute `liberar` y haya los suficientes threads para despertar en ese llamado. 
 
-Lo que sí puede ocurrir es si por ejemplo `T1` llama a `esperar`, y luego `T2` llama a `esperar`, y después otro thread los despierta a los dos, por más que `T1` va a ser despertado antes que `T2` porque las condiciones son colas FIFO, nada le garantiza a cada una el orden en el que van a volver a ejecutar, ya que van a tener que pelearse por el acceso al monitor con el resto de los threads sin un orden. Por lo que `T2` puede "terminar" la ejecución de `esperar` antes que `T1` por más que `T1` la inicio antes. 
+Lo que sí puede ocurrir es si por ejemplo `T1` llama a `esperar`, y luego `T2` llama a `esperar`, y después otro thread los despierta a los dos, por más que `T1` va a ser despertado antes que `T2` porque las condiciones son colas FIFO, nada le garantiza a cada una el orden en el que van a volver a ejecutar, ya que van a tener que pelearse por el acceso al monitor con el resto de los threads sin un orden. Por lo que `T2` puede "terminar" la ejecución de `esperar` antes que `T1` por más que `T1` la inició antes. 
 
 ## Punto B 
 Usando signal and continue una primera solución puede ser:
@@ -361,7 +361,6 @@ Monitor Atrapador{
             signal(esperar);
             cantidadEsperando--;
         }
-        signal(puedeLiberar);
     }
 }
 ```
@@ -410,10 +409,13 @@ Monitor Atrapador{
 }
 ```
 
-Una solución sin signalAll haciendo que se despierte exactamente al proceso que puede liberar puede ser tambien usando la idea de conjuntos, que en vez de agregar tuplas `(cantidadEsperando, idThread)` podemos hacer que el conjunto, o array o lista, tenga dentro `(cantidadEsperando, semaforo)` o `(cantidadEsperando, condicion)` de modo que cuando un thread que va a esperar ve que con la cantidad actual algun liberador puede trabajar, lo va a despertar a ese en particular y no potencialmente a muchos otros que se van a volver a dormir. 
+Una solución sin signalAll haciendo que se despierte exactamente al proceso que puede liberar puede ser también usando la idea de conjuntos, que en vez de agregar tuplas `(cantidadEsperando, idThread)` podemos hacer que el conjunto, o array o lista, tenga dentro `(cantidadEsperando, semaforo)` o `(cantidadEsperando, condicion)` de modo que cuando un thread que va a esperar ve que con la cantidad actual algún liberador puede trabajar, lo va a despertar a ese en particular y no potencialmente a muchos otros que se van a volver a dormir. 
 
 # Ejercicio 5 
 Asumo que no hay una cota de sillas de espera, o de personas que pueden estar esperando y que puede haber más de un peluquero a la vez cortando. 
+
+Si podemos tener una variable local para cada thread:
+
 ```java
 Monitor Pelu(){
     condition hayCliente; 
@@ -450,7 +452,7 @@ Monitor Pelu(){
         }
         cantidadPersonasEsperando -= 1;
 
-        t = proximoNumeroAAtender;
+        numeroClienteSiendoAtendido = proximoNumeroAAtender;
         proximoNumeroAAtender += 1;
         numerosLlamados.add(numeroClienteSiendoAtendido);
         signalAll(hayPeluquero);   
@@ -463,8 +465,119 @@ Monitor Pelu(){
 }
 ```
 
+Si podemos modificar el código con el cual el peluquero interactúa con el monitor para que sea: 
+
+```java 
+while(true){
+    int numeroClienteAtendido = pelu.empezarCorte();
+    // cortar 
+    pelu.terminarCorte(numeroClienteAtendido);
+}
+```
+
+```java
+Monitor Pelu(){
+    condition hayCliente; 
+    condition hayPeluquero; 
+    condition terminoCorte;
+
+    int cantidadPersonasEsperando = 0;
+    int proximoNumeroDeCorte = 0;
+    int proximoNumeroAAtender = 0;
+    Set<int> numerosLlamados = {};      // turnos ya tomados por algún peluquero
+    Set<int> cortesTerminados = {};     // turnos cuyo corte ya terminó
+
+
+    void cortarseElPelo(){
+        cantidadPersonasEsperando += 1;
+        int miNumero = proximoNumeroDeCorte; 
+        proximoNumeroDeCorte += 1;
+        signalAll(hayCliente);
+
+        while(!numerosLlamados.contains(miNumero)){
+            wait(hayPeluquero);
+        }
+
+        while(!cortesTerminados.contains(miNumero)){
+            wait(terminoCorte);
+        }
+        cortesTerminados.remove(miNumero);   
+    }
+
+    int empezarCorte(){
+        while(cantidadPersonasEsperando < 1){
+            wait(hayCliente);
+        }
+        cantidadPersonasEsperando -= 1;
+
+        int numeroClienteSiendoAtendido = proximoNumeroAAtender;
+        proximoNumeroAAtender += 1;
+        numerosLlamados.add(numeroClienteSiendoAtendido);
+        signalAll(hayPeluquero);   
+        return numeroClienteSiendoAtendido;
+    }
+
+    void terminarCorte(int numeroClienteSiendoAtendido){
+        cortesTerminados.add(numeroClienteSiendoAtendido);
+        signalAll(terminoCorte);
+    }
+}
+```
+
+Si no podemos hacer ninguna de las dos, podemos armar un map de peluqueros a cortes actuales, para que el peluquero no pierda la referencia de qué corte está haciendo al pasar de método, para esto asumo que cada Thread tiene un id único y podemos acceder a él haciendo `thread.currentId()`:
+
+
+```java
+Monitor Pelu(){
+    condition hayCliente; 
+    condition hayPeluquero; 
+    condition terminoCorte;
+
+    int cantidadPersonasEsperando = 0;
+    int proximoNumeroDeCorte = 0;
+    int proximoNumeroAAtender = 0;
+    Set<int> numerosLlamados = {};      // turnos ya tomados por algún peluquero
+    Set<int> cortesTerminados = {};     // turnos cuyo corte ya terminó
+    Map<int, int> peluqueroACorte = new HashMap<>();
+
+    void cortarseElPelo(){
+        cantidadPersonasEsperando += 1;
+        int miNumero = proximoNumeroDeCorte; 
+        proximoNumeroDeCorte += 1;
+        signalAll(hayCliente);
+
+        while(!numerosLlamados.contains(miNumero)){
+            wait(hayPeluquero);
+        }
+
+        while(!cortesTerminados.contains(miNumero)){
+            wait(terminoCorte);
+        }
+        cortesTerminados.remove(miNumero);   
+    }
+
+    int empezarCorte(){
+        while(cantidadPersonasEsperando < 1){
+            wait(hayCliente);
+        }
+        cantidadPersonasEsperando -= 1;
+
+        int numeroClienteSiendoAtendido = proximoNumeroAAtender;
+        proximoNumeroAAtender += 1;
+        numerosLlamados.add(numeroClienteSiendoAtendido);
+        peluqueroACorte.put(thread.currentId(), numeroClienteSiendoAtendido);
+        signalAll(hayPeluquero);   
+    }
+
+    void terminarCorte(int numeroClienteSiendoAtendido){
+        cortesTerminados.add(peluqueroACorte.get(thread.currentId()));
+        signalAll(terminoCorte);
+    }
+}
+```
+
 ## Punto B
-Si hay que usar una sola variable de condición, se podría reemplazar el código actual y en todas las variables de condición usar una sola y el código seguiría funcionando, ya que siempre que alguien se despierta verifica que se cumpla una condición, así que si alguien se despierta y ve que su condición no se cumple se va a volver a dormir. 
+Si hay que usar una sola variable de condición, se podría reemplazar el código actual y en todas las variables de condición usar una sola y el código seguiría funcionando, ya que siempre que alguien se despierta verifica que se cumpla una condición respecto a una variable, así que si alguien se despierta y ve que su guarda del while no se cumple se va a volver a dormir. 
 
 Va a ser mucho más ineficiente la ejecución porque al hacer un `signalAll` siempre sobre la misma cola van a estar todo el tiempo despertándose procesos y consumiendo cómputo procesos que siguen sin tener los recursos necesarios desbloqueados. Para evitar esto se podrían implementar colas de semáforos para cosas como por ejemplo el manejo de cuando un peluquero le está cortando al cliente el cliente se duerma en ese semáforo en particular y que el peluquero lo despierte a el solo al terminar el corte. 
 
@@ -547,7 +660,9 @@ Thread orador(Conferencia conferencia) {
 }
 ```
 
-Para que una persona no se pueda ir entre que entra la sala y que termina la charla, con una variable local de la persona que sea el número de charla actual, y tengo otra variable global que es el número de charla, y que para salir tiene que hacer un wait a una variable de condición encerrada en un ciclo que pida que el número de charla por empezar tiene que ser estrictamente mayor al número de charla en la que entró por primera vez.  
+Con este código una persona puede entrar a la sala y irse sin presenciar la charla. 
+
+Para que una persona no se pueda ir entre que entra la sala y que empieza la charla, con una variable local de la persona que sea el número de charla actual, y tengo otra variable global que es el número de charla, y que para salir tiene que hacer un wait a una variable de condición encerrada en un ciclo que pida que el número de charla por empezar tiene que ser estrictamente mayor al número de charla en la que entró por primera vez, de esta manera si una persona entra a la sala sí o sí tiene que presenciar una charla, no puede entrar a la sala y salir sin presenciar al menos una vez la charla.   
 
 ## Punto B
 Si ahora hay 3 personas que se van a "pelear" por dar la charla, pero no van a hacer más los oradores los 5 minutos de descanso al finalizar la charla o esperar 5 minutos si no hay nadie, si no que una vez que logren entrar al auditorio van a esperar a que hayan 40 personas y ahí van a arrancar la charla. 
@@ -580,7 +695,7 @@ Monitor Conferencia(){
         }
         // Si estoy acá es pq entré
         cantidadAsistentes += 1;
-        if(cantidadAsistentes == MIN_PARA_ARRANCAR){
+        if(cantidadAsistentes >= MIN_PARA_ARRANCAR){
             signal(haySuficienteGenteParaEmpezar);
         }
     }
@@ -626,7 +741,11 @@ Thread orador(Conferencia conferencia) {
 }
 ```
 
-Para evitar que una persona se quede encerrada dentro de las charlas infinitamente o que siempre gane un orador y dé la charla siempre él se podría implementar un turnstile para ordenar quienes entran al semáforo, de forma que por ejemplo una persona que quiere irse de la charla tiene que esperar a lo sumo a 3 charlas para irse en un peor caso. 
+Para evitar que una persona se quede encerrada dentro de las charlas infinitamente o que siempre gane un orador y dé la charla siempre él se podría implementar un turnstile para ordenar quienes entran al monitor, de forma que por ejemplo una persona que quiere irse de la charla tiene que esperar a lo sumo a 3 charlas para irse en un peor caso. 
+
+Otra opción sería que las personas que quieren salir de una charla se agreguen a un conjunto de personas que quieren irse, de forma que cuando alguien quiere empezar la charla primero tiene que esperar a que se vayan todos de ese conjunto antes de arrancar. 
+
+Aún así podría pasar que los que quieren irse también tengan problemas para ingresar al monitor y se vea demorado "su pedido para irse". 
 
 
 # Ejercicio 7 
@@ -666,8 +785,9 @@ monitor Juego(String palabra) {
             wait(puedeJugar);
         }
 
+        ultimoJugador = yo;
+
         if (alguienAdivino) {
-            ultimoJugador = yo;
             return false;
         }
 
@@ -675,8 +795,6 @@ monitor Juego(String palabra) {
         if (gane) {
             alguienAdivino = true;
         }
-
-        ultimoJugador = yo;
         signalAll(puedeJugar);
         return gane;
     }
@@ -832,6 +950,7 @@ monitor Bote(int capacidadMaxima){
     }
 }
 ```
+La solución asume que para empezar un nuevo viaje se tienen que bajar todos los del viaje anterior, no puede alguien querer hacer un viaje ida y vuelta sin llamar a `subirseAlBote`, `bajarseDelBote`, `subirseAlBote` y `bajarseDelBote`. Si el código de los que interactúan con el monitor no es `subirseAlBote` y luego `bajarseDelBote` va a dejar en deadlock al sistema. 
 
 ## Punto B 
 El modelo del punto anterior no garantiza que las personas suban al bote respetando su orden de llegada. Cuando se despiertan varias personas que están esperando, el orden en el que vuelven a ingresar al monitor depende del scheduler.
@@ -845,3 +964,144 @@ Si el ticket de la persona todavía no está siendo atendido, esta esperará en 
 El turno debe incrementarse únicamente después de que la persona haya subido al bote. Todos los pasajeros, incluido el último que completa la capacidad del bote, deben incrementarlo. De lo contrario, cuando el bote regrese a esa costa, la cola podría quedar esperando un ticket perteneciente a una persona que ya realizó el viaje.
 
 Para que la entrega de tickets también respete estrictamente el orden de llegada, se puede proteger la llamada a `pedirTicket` mediante un molinete desde fuera del monitor. Una vez que una persona ingresa a `pedirTicket` y obtiene su número, libera inmediatamente el molinete para permitir que la siguiente persona solicite el suyo. Esto es posible porque `pedirTicket` no contiene ninguna operación `wait`.
+
+# Ejercicio 10 
+## Punto A 
+
+```java 
+import java.util.ArrayDeque;
+import java.util.Queue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+
+public class ej10<T> {
+    private final Queue<T> recursos = new ArrayDeque<>();
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition isEmpty = lock.newCondition();
+
+    public void liberar(T elemento) {
+        lock.lock();
+        try {
+            recursos.add(elemento);
+            isEmpty.signalAll();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public T tomar() throws InterruptedException {
+        lock.lock();
+        try {
+            while (recursos.isEmpty()) {
+                isEmpty.await();
+            }
+            return recursos.remove();
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+```
+
+## Punto B
+```java 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+
+public class ej10<T> {
+    private final Queue<T> recursos = new ArrayDeque<>();
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition isEmpty = lock.newCondition();
+
+
+    public void liberar(List<T> elementos) {
+        lock.lock();
+        try {
+            for (int i = 0; i < elementos.size(); i++){
+                recursos.add(elementos.get(i));
+            }
+            isEmpty.signalAll();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public List<T> tomar(int cantidad) throws InterruptedException {
+        lock.lock();
+        try {
+            while (recursos.size() < cantidad) {
+                isEmpty.await();
+            }
+            List<T> tomados = new ArrayList<>();
+            for (int i = 0; i < cantidad; i++) {
+                tomados.add(recursos.remove());
+            }
+            return tomados;
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+```
+
+## Punto C
+Para no perjudicar a los procesos que vienen primero y piden muchos recursos lo que voy a hacer es secuencializar bastante el modelo, pero lo que voy a agregar es que cada elemento cuando entra saca un ticket y pone su ticket en una cola asociado a la cantidad de recursos que quiere y el primero que va a poder agarrar recursos va a ser él, incluso si después entran procesos que ya pueden agarrar la suficiente cantidad de recursos, el primero en llevárselo va a ser estrictamente FIFO. 
+
+```java 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+
+public class ej10<T> {
+    private final Queue<T> recursos = new ArrayDeque<>();
+    private record Ticket(int numero, int cantidad) {}
+    private final Queue<Ticket> tickets = new ArrayDeque<>();
+    int proximoTicket = 0;
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition isEmpty = lock.newCondition();
+
+
+    public void liberar(List<T> elementos) {
+        lock.lock();
+        try {
+            for (int i = 0; i < elementos.size(); i++){
+                recursos.add(elementos.get(i));
+            }
+            isEmpty.signalAll();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public List<T> tomar(int cantidad) throws InterruptedException {
+        lock.lock();
+        try {
+            int miTicket = proximoTicket; 
+            proximoTicket += 1;
+            tickets.add(new Ticket(miTicket, cantidad));
+            while (tickets.peek().numero() != miTicket || recursos.size() < cantidad) {
+                isEmpty.await();
+            }
+            tickets.remove();
+            List<T> tomados = new ArrayList<>();
+            for (int i = 0; i < cantidad; i++) {
+                tomados.add(recursos.remove());
+            }
+            isEmpty.signalAll();
+            return tomados;
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+```

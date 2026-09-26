@@ -22,7 +22,7 @@ thread t2 {
 ```
 
 # Ejercicio 2 
-Si le asignamos un timestamp a cada letra de cuando se tiene que mostrar como `Ts(l)`, se tiene que cumplir que: 
+Si le asignamos un timestamp a cada letra de cuándo se tiene que mostrar como `Ts(l)`, se tiene que cumplir que: 
 
 - `Ts(A) < Ts(C) < Ts(E) < Ts(R) < Ts(O)` o 
 - `Ts(A) < Ts(C) < Ts(R) < Ts(E) < Ts(O)`
@@ -200,7 +200,7 @@ Asumo que hay un solo lugar donde se dejan todos los discos (un rack central) y 
 
 Los recursos compartidos son: las cuatro máquinas (cada una independiente de las demás) y el rack de discos, que es un único recurso compartido por todos los clientes y todas las máquinas. Los agentes activos son los clientes del gimnasio, cada uno con una rutina propia: una lista finita de pasos, donde cada paso indica qué máquina usar y cuántos discos necesita para ese ejercicio. La rutina puede repetir máquinas o no usar alguna.
 
-Para sincronizar el acceso propongo un mutex por máquina (cuatro en total, uno por aparato) y un semáforo contador para el rack de discos, inicializado con la cantidad total de discos disponibles. Cada vez que un cliente necesita discos, hace un `acquire` de tantos permisos como discos precise; al devolverlos, hace el `release` correspondiente. Es importante notar que esta solución funciona porque hacer `semaphore.acquire(n)` en java es atomico, o se toman los n permisos o ninguno, si no fuera así podría ocurrir un deadlock. 
+Para sincronizar el acceso propongo un mutex por máquina (cuatro en total, uno por aparato) y un semáforo contador para el rack de discos, inicializado con la cantidad total de discos disponibles. Cada vez que un cliente necesita discos, hace un `acquire` de tantos permisos como discos precise; al devolverlos, hace el `release` correspondiente. Es importante notar que esta solución funciona porque hacer `semaphore.acquire(n)` en java es atómico, o se toman los n permisos o ninguno, si no fuera así podría ocurrir un deadlock. 
 
 Para cada paso de su rutina, un cliente:
 1. Espera a que la máquina que necesita esté libre (`acquire` del mutex de esa máquina).
@@ -389,75 +389,83 @@ Dentro de los posibles lugares de carga y descarga, las máquinas van a tener lo
 
 En cualquier momento puede ir un vehículo a la plataforma de descarga o de carga a hacer descarga o carga y no importa si ya hay otros haciendo lo mismo. 
 
-Asumo que tengo acceso a un objeto dummy `FakeSemaphore()` que implementa `acquire` y `release` pero que ambas son no bloqueantes y realmente no hacen nada. De esta manera no hace falta poner ifs que si el id de la carga o descarga es uno en particular haga algo distinto y siempre se haga lo mismo independientemente de en que estación de carga o descarga se va a operar.
+Asumo que tengo acceso a un objeto dummy `FakeSemaphore()` que implementa `acquire` y `release` pero que ambas son no bloqueantes y realmente no hacen nada. De esta manera no hace falta poner ifs que si el id de la carga o descarga es uno en particular haga algo distinto y siempre se haga lo mismo independientemente de en qué estación de carga o descarga se va a operar.
 
 Asumo también que cada auto tiene un id del 0 al 3 indicando cuál es el cual puede consultar haciendo `currentThread.id()` y lo mismo con las máquinas/ estaciones de carga y descarga que tienen ids del 0 al 9. 
 
 ```java 
-global List<Semaphore> autoPuedeDescargarEnMaquina = new List<Semaphore>();
-// mutex: controla que un auto pueda ocupar el slot de descarga de la máquina (auto -> máquina)
-
-global List<Semaphore> maquinaRecibioMateriaPrima = new List<Semaphore>();
-// señal: el auto avisa a la máquina que ya dejó materia prima para procesar (auto -> máquina)
-
 global List<Semaphore> autoPuedeCargarDeMaquina = new List<Semaphore>();
-// mutex: controla que un auto pueda ocupar el slot de carga de la máquina (auto -> máquina)
-
-global List<Semaphore> maquinaTerminoDeProcesar = new List<Semaphore>();
-// señal: la máquina avisa a los autos que ya hay producto refinado listo para retirar (máquina -> auto)
+global List<Semaphore> maquinaRecibioCarga = new List<Semaphore>();
+global List<Semaphore> maquinaTerminaCarga = new List<Semaphore>();
+global List<Semaphore> maquinaPuedeProcesar = new List<Semaphore>();
+global List<Semaphore> autoPuedeDescargar = new List<Semaphore>();
+global List<Semaphore> maquinaPuedeDescargar = new List<Semaphore>();
+global List<Semaphore> maquinaTerminaDescarga = new List<Semaphore>();
 
 // Posiciones 0 a 7: las 8 máquinas procesadoras
 for(int i = 0; i < 8; i++){
-    autoPuedeDescargarEnMaquina.push(Semaphore(1));  // arranca libre
-    maquinaRecibioMateriaPrima.push(Semaphore(0));   // arranca sin nada para procesar
-    autoPuedeCargarDeMaquina.push(Semaphore(1));     // arranca libre
-    maquinaTerminoDeProcesar.push(Semaphore(0));     // arranca sin producto listo
+    autoPuedeCargarDeMaquina.push(Semaphore(1));  // arranca libre
+    maquinaRecibioCarga.push(Semaphore(0));
+    maquinaTerminaCarga.push(Semaphore(0));
+    maquinaPuedeProcesar.push(Semaphore(0));
+    autoPuedeDescargar.push(Semaphore(0));
+    maquinaPuedeDescargar.push(Semaphore(0));
+    maquinaTerminaDescarga.push(Semaphore(0));
 }
 
-// Posiciones 8 y 9: plataforma de recepcion (8) y de entrega (9) - todo fake
-autoPuedeDescargarEnMaquina.push(FakeSemaphore());
-autoPuedeDescargarEnMaquina.push(FakeSemaphore());
-maquinaRecibioMateriaPrima.push(FakeSemaphore());
-maquinaRecibioMateriaPrima.push(FakeSemaphore());
-autoPuedeCargarDeMaquina.push(FakeSemaphore());
-autoPuedeCargarDeMaquina.push(FakeSemaphore());
-maquinaTerminoDeProcesar.push(FakeSemaphore());
-maquinaTerminoDeProcesar.push(FakeSemaphore());
+for(int i = 0; i < 2; i++){
+    autoPuedeCargarDeMaquina.push(FakeSemaphore());
+    maquinaRecibioCarga.push(FakeSemaphore());
+    maquinaTerminaCarga.push(FakeSemaphore());
+    maquinaPuedeProcesar.push(FakeSemaphore());
+    autoPuedeDescargar.push(FakeSemaphore());
+    maquinaPuedeDescargar.push(FakeSemaphore());
+    maquinaTerminaDescarga.push(FakeSemaphore());
+}
 
 thread maquina(int identificador){
     int idMaquina = identificador;
     
-    void descargar(){
-        maquinaRecibioMateriaPrima[currentThread.id()].acquire();
-        
+    void cargar(){
+        maquinaRecibioCarga[idMaquina].acquire();
+        // Carga 
+        maquinaTerminaCarga[idMaquina].release();
+        maquinaPuedeProcesar[idMaquina].release();
     }
 
     void procesar(){
-
+        maquinaPuedeProcesar[idMaquina].acquire();
         // Hace algo
+        autoPuedeCargarDeMaquina[idMaquina].release();
+        autoPuedeDescargar[idMaquina].release();
     }
 
-    void cargar(){
-        maquinaTerminoDeProcesar[currentThread.id()].release();
+
+    void descargar(){
+        maquinaPuedeDescargar[idMaquina].acquire();
+        // Hace la descarga 
+        maquinaTerminaDescarga[idMaquina].release();
     }
 }
 
 thread vehiculo(int identificador){
     int idVehiculo = identificador;
 
-    void cargar(int idDestino){
-        autoPuedeCargarDeMaquina[idDestino].acquire();
-        maquinaTerminoDeProcesar[idDestino].acquire();
-        autoPuedeCargarDeMaquina[idDestino].release();
+    void cargar(int idMaquina){
+        autoPuedeCargarDeMaquina[idMaquina].acquire();
+        maquinaRecibioCarga[idMaquina].release();
+        maquinaTerminaCarga[idMaquina].acquire();
     }
 
-    void descargar(int idDestino){
-        autoPuedeDescargarEnMaquina[idDestino].acquire();
-        maquinaRecibioMateriaPrima[idDestino].release();
-        autoPuedeDescargarEnMaquina[idDestino].release();
+    void descargar(int idMaquina){
+        autoPuedeDescargar[idMaquina].acquire();
+        maquinaPuedeDescargar[idMaquina].release();
+        maquinaTerminaDescarga[idMaquina].acquire();
     }
 }
 ```
+
+
 # Ejercicio 11
 El ejercicio es similar al de lectores escritores, donde la gente que usa el baño son los lectores, y el personal de limpieza el escritor.  
 ## Punto A 
