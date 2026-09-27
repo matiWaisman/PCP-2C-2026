@@ -1,1 +1,6 @@
 *.class
+
+# Archivos generados por Maven en el laboratorio de estructuras concurrentes
+labo-estructuras-concurrentes/laboEstructurasLockFree/target/
+labo-estructuras-concurrentes/laboEstructurasLockFree/.tmp/
+labo-estructuras-concurrentes/laboEstructurasLockFree/.mvn/wrapper/maven-wrapper.jar

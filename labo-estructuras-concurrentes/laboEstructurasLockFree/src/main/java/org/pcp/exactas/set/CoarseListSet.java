@@ -21,7 +21,9 @@ public class CoarseListSet implements ConcurrentIntSet {
             if (curr.key == value) {
                 return false;
             }
-            pred.next = new Node(value, curr);
+            Node node = new Node(value);
+            node.next = curr;
+            pred.next = node;
             return true;
         }
         finally{

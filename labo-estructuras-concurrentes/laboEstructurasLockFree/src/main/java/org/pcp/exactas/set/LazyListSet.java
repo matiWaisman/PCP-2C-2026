@@ -11,31 +11,82 @@ public class LazyListSet implements ConcurrentIntSet {
     @Override public boolean add(int value) {
         while (true) {
             Node pred = head, curr = head.next;
-            // TODO
-            return false;
+            while(curr.key < value){
+                pred = curr; 
+                curr = curr.next;
+            }
+            pred.lock.lock();
+            try{
+                curr.lock.lock();
+                try{
+                    if (edgeExists(pred, curr)){
+                        if(curr.key == value){
+                            return false;
+                        }
+                        else{
+                            Node node = new Node(value);
+                            node.next = curr; 
+                            pred.next = node;
+                            return true;
+                        }
+                    }
+                }
+                finally{
+                    curr.lock.unlock();
+                }
+            }
+            finally{
+                pred.lock.unlock();
+            }
         }
     }
 
     @Override public boolean remove(int value) {
         while (true) {
             Node pred = head, curr = head.next;
-            // TODO
-            return false;
+            while(curr.key < value){
+                pred = curr; 
+                curr = curr.next;
+            }
+            pred.lock.lock();
+            try{
+                curr.lock.lock();
+                try{
+                    if (edgeExists(pred, curr)){
+                        if(curr.key == value){
+                            curr.marked = true;
+                            pred.next = curr.next;
+                            return true;
+                        }
+                        else{
+                            return false;
+                        }
+                    }
+                }
+                finally{
+                    curr.lock.unlock();
+                }
+            }
+            finally{
+                pred.lock.unlock();
+            }
         }
     }
 
     @Override public boolean contains(int value) {
-        // TODO
-        return false;
+        Node curr = head.next;
+        while (curr.key < value) {
+            curr = curr.next;
+        }
+        return curr.key == value && !curr.marked;
     }
 
     private static boolean edgeExists(Node pred, Node curr) {
-        // TODO
-        return false;
+        return !pred.marked && !curr.marked && pred.next == curr;
     }
 
     @Override public boolean isImplemented() {
-        return false;
+        return true;
     }
 
     private static final class Node {

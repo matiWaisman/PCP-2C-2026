@@ -9,51 +9,60 @@ public class FineListSet implements ConcurrentIntSet {
     public FineListSet() { head.next = tail; }
 
     @Override public boolean add(int value) {
+        head.lock.lock();
         Node pred = head;
-        Node curr = head.next;
         try{
-            pred.lock.lock();
+            Node curr = pred.next;
             curr.lock.lock();
-            while (curr.key < value) {
-                pred.lock.unlock();
-                pred = curr;
-                curr = curr.next;
-                curr.lock.lock();
+            try{
+                while(curr.key < value){
+                    pred.lock.unlock();
+                    pred = curr;
+                    curr = curr.next;
+                    curr.lock.lock();
+                }
+                if(curr.key == value){
+                    return false;
+                }
+                Node node = new Node(value);
+                node.next = curr;
+                pred.next = node;
+                return true;
             }
-            if (curr.key == value) {
-                return false;
+            finally{
+                curr.lock.unlock();
             }
-            pred.next = new Node(value, curr);
-            return true;
         }
         finally{
             pred.lock.unlock();
-            curr.lock.unlock();
         }
-        
     }
 
     @Override public boolean remove(int value) {
+        head.lock.lock();
         Node pred = head;
-        Node curr = head.next;
         try{
-            pred.lock.lock();
+            Node curr = pred.next;
             curr.lock.lock();
-            while (curr.key < value) {
-                pred.lock.unlock();
-                pred = curr;
-                curr = curr.next;
-                curr.lock.lock();
-            }
-            if (curr.key != value) {
+            try{
+                while(curr.key < value){
+                    pred.lock.unlock();
+                    pred = curr;
+                    curr = curr.next;
+                    curr.lock.lock();
+                }
+                if(curr.key == value){
+                    pred.next = curr.next;
+                    return true;
+                }
                 return false;
             }
-            pred.next = curr.next;
-            return true;
+            finally{
+                curr.lock.unlock();
+            }
         }
         finally{
             pred.lock.unlock();
-            curr.lock.unlock();
         }
     }
 

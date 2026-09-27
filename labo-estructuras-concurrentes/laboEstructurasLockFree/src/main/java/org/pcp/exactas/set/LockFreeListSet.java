@@ -13,24 +13,44 @@ public class LockFreeListSet implements ConcurrentIntSet {
             Window window = find(value);
             Node pred = window.pred;
             Node curr = window.curr;
-            // TODO
-            return false;
+            if(curr.key == value){
+                return false;
+            }
+            else{
+                Node node = new Node(value, curr);
+                if (pred.next.compareAndSet(curr, node, false, false)) {
+                    return true;
+                }
+            }
         }
     }
 
     @Override public boolean remove(int value) {
+        boolean snip;
         while (true) {
             Window window = find(value);
             Node pred = window.pred;
             Node curr = window.curr;
-            // TODO
-            return false;
+            if(curr.key != value){
+                return false;
+            }
+            else{
+                Node succ = curr.next.getReference();
+                snip = curr.next.compareAndSet(succ, succ, false, true);
+                if (!snip) {
+                    continue;
+                }
+                pred.next.compareAndSet(curr, succ, false, false);
+                return true;
+            }
         }
     }
 
-    @Override public boolean contains(int value) {
-        // TODO
-        return false;
+    @Override public boolean contains(int value) {Node curr = head.next;
+        while (curr.key < value) {
+            curr = curr.next;
+        }
+        return curr.key == value && !curr.marked;
     }
 
     @Override public boolean isImplemented() { return false; }
