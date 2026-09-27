@@ -169,30 +169,49 @@ boolean transferirMultiple(int origen, int[] destinos, int[] montos){
 
 # Ejercicio 3 
 ```java 
-Monitor NDJ(){
+Monitor NDJ(int M, int[] lugares){
     condition lugarDisponible;
+    boolean[] libre = {true, ..., true}; // M trues
+    int[] capacidad = lugares;
 
-    void sentarse(){
-        while(!existe(i) tal que libre[i] y lugares[i] >= k){
-            wait(lugarDisponible)
+    // Recorre todas las mesas y si encuentra una en la que se puede sentar y esta libre devuelve ese i, si no devuelve -1
+    int mesaASentrarse(int sizeGrupo){
+        for(int i = 0; i < capacidad.size(); i++){
+            if(libre[i] && capacidad[i] >= sizeGrupo){
+                return i;
+            }
         }
-        i = aquella mesa que sea libre y tenga lugar 
-        libre[i] = false
-        return i;
+        return -1;
+    }
+
+    int sentarse(int sizeGrupo){
+        while(true){
+            int numeroMesa = mesaASentarse(sizeGrupo);
+            if(numeroMesa != -1){
+                break;
+            }
+            wait(lugarDisponible);
+        }
+        // Tomo la mesa 
+        libre[numeroMesa] = false;
+        return numeroMesa;
     }
 
     void levantarse(int mesa){
-
+        libre[mesa] = true;
+        signalAll(lugarDisponible);
     }
 }
 ```
 
-Para que no haya starvation habría que usar un número de ticket, una solución que lo secuencializa bastante es que al while le agregues que el próximo no sea igual al ticket, pero lo sequencializa bastante, para mejorarlo se podría usar un conjunto de tuplas `(cantidadGente, ticket)` y cuando ves el while gana el que entra en la mesa que menor número de ticket tiene. 
+Para no hacer `signalAll` siempre, se puede primero todos los que se duermen meter en una lista cuanto espacio precisan, si cuando alguien se levanta ve que hay gente que le puede venir bien esa mesa levantan a todos. 
+
+Para que no haya starvation habría que usar un número de ticket, una solución que lo secuencializa bastante es que al while le agregues que el próximo no sea igual al ticket, pero lo sequencializa bastante, para mejorarlo se podría usar un conjunto de tuplas `(cantidadGente, ticket)` y cuando ves el while gana el que entra en la mesa que menor número de ticket tiene dentro de todos los que pueden entrar.  
 
 Otra solución posible es con colas. Tenemos una lista donde tenemos una tupla cuál es mi ticket y una variable de condición. Cuando llega alguien se agrega a la lista, cuando alguien se despierta puede buscar de todos los pedidso cuál es el más cercano que puede entrar a la mesa k, y directamente levantás a ese grupo que queda con una variable de condición dinámica. Tenés una variable de condición por cada pedido. Levantás al primero que cumple de la cola/ lista que le puede venir bien la mesa que liberaste. 
 
 ## Punto B 
-Habría que cambiar los whiles por if. 
+Se puede usar el approach de las colas de variables de condicion con ifs en vez de whiles, ya que una vez que te despiertan no hace falta verificar nada. 
 
 # Ejercicio 4 
 ## Punto A
@@ -207,8 +226,15 @@ void inc(int id){
 
 int get(){
     int total = 0;
+    // Tomo todos los locks 
+    for(int i = 0; i < n; i++){
+        locks[i].lock();
+    }
     for(int i = 0; i < n; i++){
         total = valor[i];
+    }
+    for(int i = 0; i < n; i++){
+        locks[i].unlock();
     }
     return total;
 }
@@ -217,14 +243,14 @@ Hay que tomar todos los locks en el get porque si no hay problemas de linearabiz
 
 En el incremento el punto de linealización es cuando hacés el cambio que sumas en uno. 
 
-Los `locks` son fair
+Los `locks` son fair.
 
 ## Punto C
 ```java 
 void inc(int id){
     bucket = id % n;
-    actual = valor[bucket];
     while(true){
+        actual = valor[bucket];
         if(cas(valor[bucket], actual, actual + 1)){
             return;
         }

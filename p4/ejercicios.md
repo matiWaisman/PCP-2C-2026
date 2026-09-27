@@ -1,10 +1,10 @@
 # Ejercicio 1 
 
 - En granularidad gruesa: 
-    - En el `add` si ocurre que un elemento `b` que no pertenece al conjunto tiene el mismo hash que un elemento `a` que sí pertenece, cuando en el código se hace `if (key == curr.key) return false`, la comparación ahora debería ser `if (key == curr.key && curr.value == o.value) return false`. 
+    - En el `add` si ocurre que un elemento `b` que no pertenece al conjunto tiene el mismo hash que un elemento `a` que sí pertenece, habría que modificar el while a: `while (curr.key < key || (curr.key == key && curr.value < o.value))` para que ahora recorra hasta los elementos que tienen la misma clave y de los que tienen la misma clave el valor menor estricto, y la comparación para determinar si el elemento esta repetido ahora debería ser `if (key == curr.key && curr.value == o.value) return false`. Si eso es falso, entonces vamos a agregar al elemento en el orden correcto, que es primero ordenando por clave y luego por valor.
     - En el `remove` no habría que cambiar nada porque la desición de eliminar es con un if por el valor del elemento. 
 - En granularidad fina:
-    - En el `remove` no basta con cortar el ciclo cuando encontramos una clave mayor o igual, porque ahora puede haber varios nodos con la misma `key` y distinto `value`. La condición del ciclo debería ser `while(curr.key < key || (curr.key == key && !curr.item.equals(item)))`, así seguimos avanzando mientras la clave sea menor, o mientras la clave sea igual pero el nodo no sea el elemento que buscamos. Una vez afuera del cuerpo del `while` puede ser por dos cosas: o porque encontramos un elemento cuya key es más grande (o sea que el elemento que queremos eliminar no está), o porque encontramos uno con la misma key que además es `equals()` al que buscamos. Por eso el `if` para eliminarlo cambia a `if(curr.key == key && curr.item.equals(item))`: si es ese elemento lo eliminamos, y si no devolvemos falso.
+    - En el `remove` no basta con cortar el ciclo cuando encontramos una clave mayor o igual, porque ahora puede haber varios nodos con la misma `key` y distinto `value`. La condición del ciclo debería ser `while(curr.key < key || (curr.key == key && curr.item < item.value))`, así seguimos avanzando mientras la clave sea menor, o mientras la clave sea igual pero el nodo no sea el elemento que buscamos. Una vez afuera del cuerpo del `while` puede ser por tres cosas: o porque encontramos un elemento cuya key es más grande, o un elemento con la misma key pero más grande el valor (o sea que el elemento que queremos eliminar no está), o porque encontramos uno con la misma key que además es `equals()` al que buscamos. Por eso el `if` para eliminarlo cambia a `if(curr.key == key && curr.item.equals(item))`: si es ese elemento lo eliminamos, y si no devolvemos falso.
     - En el `add` la idea sería agregar los elementos en orden, primero ordenando por `key` y después por `value` (dentro de los nodos que comparten `key`). Así que la condición del ciclo debería ser `while(curr.key < key || (curr.key == key && curr.value < o.value))`, avanzando mientras la clave sea menor, o mientras sea igual pero el valor todavía sea menor al que queremos insertar. Al salir del `while` puede ser porque llegamos a un nodo con clave más grande (no hay ningún elemento con esa key todavía, o ya pasamos el lugar que le corresponde por value), o porque encontramos uno con la misma key y mismo value o mayor. Por eso la condición para determinar si el elemento ya pertenece a la lista debería ser `if(curr.key == key && curr.value == o.value)`, devolviendo falso si ya está, e insertando el nuevo nodo entre `pred` y `curr` en caso contrario.
 - En la versión optimista: 
     - En `validate` no hay que cambiar nada porque en un peor caso donde dos elementos tengan la misma clave van a seguir ambos dentro del ciclo. 
@@ -495,8 +495,6 @@ public class Contador{
 ```
 Esta solución es `wait-free`. Cada uno de los tres métodos (inc, get, reset) consiste en una única llamada a una operación atómica de AtomicInteger (getAndIncrement(), get(), getAndSet()), sin ningún ciclo de reintento explícito en nuestro código. No hay ningún while(true) que dependa de si el thread "gana una carrera" contra otros — cada método ejecuta una cantidad fija de pasos (uno) para completar, sin importar cuántos otros threads estén compitiendo concurrentemente ni qué tan mala sea la interacción entre ellos.
 
-Preguntar si no hace falta hacer un CAS o algo. 
-
 # Ejercicio 11
 ```java 
 // Par inmutable para la posición
@@ -534,4 +532,3 @@ public class Figura {
     }
 }
 ```
-Preguntar si no hace falta hacer un CAS o algo. 
