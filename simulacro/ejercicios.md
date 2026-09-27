@@ -109,7 +109,7 @@ int cuentasEnRojo(){
     acceso.acquire();
     // Asumo que no puede cambiar el largo de balances en este momento
     for(int i = 0; i < balances.length; i++){
-        // Como cualquier transferencia que quiera ocurrir tiene que tener acceso, el cual esta tomado por el thread ejecutando este metodo, no hace falta tomar ningun mutex para consultar el balance de la cuenta, ya que no puede cambiar. 
+        // Como cualquier transferencia que quiera ocurrir tiene que tener acceso, el cual está tomado por el thread ejecutando este método, no hace falta tomar ningún mutex para consultar el balance de la cuenta, ya que no puede cambiar. 
         if(balances[i] < 0){
             res += 1;
         }
@@ -149,7 +149,7 @@ boolean transferirMultiple(int origen, int[] destinos, int[] montos){
     }
     mutexs[origen].release();
     // Asumo que tengo una función que sortea tanto destinos, como los montos que les debería ir a cada uno para que queden con sentido, y asumo que lo hace por referencia
-    // Tambien me devuelve en orden el origen agregado en destinos para tomar los locks en orden y evitar un deadlock.
+    // También me devuelve en orden el origen agregado en destinos para tomar los locks en orden y evitar un deadlock.
     destinosMasOrigenSorteados = sortEpico(destinos, montos);
     for(int i = 0; i < destinosMasOrigenSorteados.length; i++){
         mutexs[i].acquire();
@@ -174,7 +174,7 @@ Monitor NDJ(int M, int[] lugares){
     boolean[] libre = {true, ..., true}; // M trues
     int[] capacidad = lugares;
 
-    // Recorre todas las mesas y si encuentra una en la que se puede sentar y esta libre devuelve ese i, si no devuelve -1
+    // Recorre todas las mesas y si encuentra una en la que se puede sentar y está libre devuelve ese i, si no devuelve -1
     int mesaASentrarse(int sizeGrupo){
         for(int i = 0; i < capacidad.size(); i++){
             if(libre[i] && capacidad[i] >= sizeGrupo){
@@ -204,14 +204,18 @@ Monitor NDJ(int M, int[] lugares){
 }
 ```
 
-Para no hacer `signalAll` siempre, se puede primero todos los que se duermen meter en una lista cuanto espacio precisan, si cuando alguien se levanta ve que hay gente que le puede venir bien esa mesa levantan a todos. 
+Para no hacer `signalAll` siempre, se puede primero todos los que se duermen meter en una lista cuánto espacio precisan, si cuando alguien se levanta ve que hay gente que le puede venir bien esa mesa levantan a todos. 
 
-Para que no haya starvation habría que usar un número de ticket, una solución que lo secuencializa bastante es que al while le agregues que el próximo no sea igual al ticket, pero lo sequencializa bastante, para mejorarlo se podría usar un conjunto de tuplas `(cantidadGente, ticket)` y cuando ves el while gana el que entra en la mesa que menor número de ticket tiene dentro de todos los que pueden entrar.  
+Para que no haya starvation habría que usar un número de ticket, una solución que lo secuencializa bastante es que al while le agregues que el próximo no sea igual al ticket, para mejorarlo se podría usar un conjunto de tuplas `(cantidadGente, ticket)` y cuando ves el while gana el que entra en la mesa que menor número de ticket tiene dentro de todos los que pueden entrar.  
 
-Otra solución posible es con colas. Tenemos una lista donde tenemos una tupla cuál es mi ticket y una variable de condición. Cuando llega alguien se agrega a la lista, cuando alguien se despierta puede buscar de todos los pedidso cuál es el más cercano que puede entrar a la mesa k, y directamente levantás a ese grupo que queda con una variable de condición dinámica. Tenés una variable de condición por cada pedido. Levantás al primero que cumple de la cola/ lista que le puede venir bien la mesa que liberaste. 
+Otra solución posible es con listas y variables de condición particulares para cada grupo. Tenemos una lista donde tenemos una tupla cuál es mi ticket y una variable de condición. 
+
+Cuando llega alguien si ve que no se puede sentar en ninguna mesa pide un ticket y crea una variable de condición y se agrega a la lista, cuando alguien se despierta puede buscar de todos los pedidos cuál es el más cercano que puede entrar a la mesa k, y directamente levantás a ese grupo que queda con una variable de condición dinámica. Tenés una variable de condición por cada pedido. Levantás al primero que cumple de la cola/ lista que le puede venir bien la mesa que liberaste. Y para que un grupo mientras te despiertan pueda venir y ganarte de manos en la mesa tenés un ticket por mesa que obligas a que el grupo que se sienta tenga ese ticket. 
+
+Ambas soluciones deberían tener en cuenta qué tan grande es el grupo y hace cuánto están esperando para decidir si pasan ellos. Dependiendo del tamaño de las mesas en promedio y los tamaños de los grupos en promedio podría variar ese algoritmo. 
 
 ## Punto B 
-Se puede usar el approach de las colas de variables de condicion con ifs en vez de whiles, ya que una vez que te despiertan no hace falta verificar nada. 
+Se puede usar el approach de las colas de variables de condición con ifs en vez de whiles, ya que una vez que te despiertan no hace falta verificar nada. 
 
 # Ejercicio 4 
 ## Punto A

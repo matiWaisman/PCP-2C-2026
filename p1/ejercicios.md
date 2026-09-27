@@ -251,7 +251,7 @@ Sí, existe un interleaving en el que el loop `T1` se ejecute exactamente una ve
 Si separamos el código del programa en las instrucciones atómicas: 
 
 - `p1`/`q1`: Lectura de n en una variable local `tmp`.
-- `p2`/`q2`: Comparación y desicion del loop contra `tmp`.
+- `p2`/`q2`: Comparación y decisión del loop contra `tmp`.
 - `p3`/`q3`: Escritura nueva en `n`
 
 Que los ciclos de `T1` y `T2` terminen dependen del orden en el que ejecute los hilos el scheduler, en un caso en el que los programas se ejecuten cíclicamente de la forma: 
@@ -412,7 +412,7 @@ Como mucho puede quedarse esperando un único thread a la vez, el que coincida s
 
 # Ejercicio 12 
 ## Punto A
-El algoritmo no resuelve el problema de exlusion mutua porque puede ocurrir un Deadlock. 
+El algoritmo no resuelve el problema de exclusión mutua porque puede ocurrir un Deadlock. 
 
 Si al menos dos procesos setean su flag en True antes de que el primero entre a la sección crítica, ambos van a quedarse trabados en el while, luego todos los demás que quieran entrar también se van a quedar stuckeados en el while. Como ocurre deadlock también puede ocurrir procesos no puedan entrar nunca. 
 
@@ -523,7 +523,7 @@ De esta manera, cuando un proceso sale de la sección crítica, mueve el turno h
 
 Para probar las propiedades: 
 
-- Supongamos que no se cumple exlusión mutua, entonces ocurre que en un punto hay dos procesos en la línea `Sección Crítica`, para que ocurra eso, tiene que pasar que para ambos se cumple que su variable local `miturno` es igual a la variable global `turno`, osea que cuando ambos procesos hicieron `fetch-and-add(ticket, miturno, 1); ` ticket tenía el mismo valor y al terminar de ejecutar esa función `miturno` fue igual a `ticket + 1` para ambos, pero eso es absurdo porque `fetch-and-add` es atómica, así que solo a uno le puede dar `ticket + 1` y al otro le va a dar `ticket + 2`. Así que sí se cumple exclusión mutua. 
+- Supongamos que no se cumple exclusión mutua, entonces ocurre que en un punto hay dos procesos en la línea `Sección Crítica`, para que ocurra eso, tiene que pasar que para ambos se cumple que su variable local `miturno` es igual a la variable global `turno`, osea que cuando ambos procesos hicieron `fetch-and-add(ticket, miturno, 1); ` ticket tenía el mismo valor y al terminar de ejecutar esa función `miturno` fue igual a `ticket + 1` para ambos, pero eso es absurdo porque `fetch-and-add` es atómica, así que solo a uno le puede dar `ticket + 1` y al otro le va a dar `ticket + 2`. Así que sí se cumple exclusión mutua. 
 
 - Supongamos que no se cumple ausencia de deadlock, entonces ocurre que para al menos dos threads (o más) se quedan atascados en la línea `while(turno != miturno) {}` ya que se cumple que `turno` y `miturno` tienen valores distintos y nunca llegan a coincidir. Pero como `turno` se incrementa de forma atómica, y asumimos que todos los procesos terminan dentro de su sección crítica siempre al final aumentan en 1 el valor de `turno`, por lo que tarde o temprano va a valer `miturno`. 
 

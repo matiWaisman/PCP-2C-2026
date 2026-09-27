@@ -3,18 +3,18 @@ Lo importante es que todos sigan el orden.
 Mientras todos vayan para un lado o para el otro todo bien. 
 O vas de izquierda a derecha agarrando predecesor y actual 
 O vas de derecha a izquierda tomando posterior y predecesor. 
-Si un metodo sigue un orden y otro metodo sigue otro ahí vas a tener deadlock. 
+Si un método sigue un orden y otro método sigue otro ahí vas a tener deadlock. 
 
 El orden es tomar primero la cabeza, el siguiente, liberar la cabeza y tomar el siguiente del siguiente y liberar el siguiente. 
 
-En el metodo contains no hace falta bloquear a nadie. Aunque bloquees sigue pasando el mismo problema que aunque si bloquees el nodo y veas que existia, en el medio entre que devuelve la funcion alguien pudo haber borrado el nodo. Así que tu punto de linealización es luego de determinar si esta o no. 
+En el método contains no hace falta bloquear a nadie. Aunque bloquees sigue pasando el mismo problema que aunque si bloquees el nodo y veas que existía, en el medio entre que devuelve la función alguien pudo haber borrado el nodo. Así que tu punto de linealización es luego de determinar si está o no. 
 
 # Ejercicio 4 
-El metodo `edgeExists` hace el verify del metodo optimista, la idea es primero antes de hacer add o remove recorrer y bloquear el anterior y el siguiente. El problema es que antes de agarrar el anterior alguien pudo haberle eliminado la referencia, para asegurarnos de que nadie lo elimine antes, hay que volver a verificar de principio a fin que nadie haya eliminado las referencias. 
+El método `edgeExists` hace el verify del método optimista, la idea es primero antes de hacer add o remove recorrer y bloquear el anterior y el siguiente. El problema es que antes de agarrar el anterior alguien pudo haberle eliminado la referencia, para asegurarnos de que nadie lo elimine antes, hay que volver a verificar de principio a fin que nadie haya eliminado las referencias. 
 
 Al borrar un nodo `curr`, hay que conservar `curr.next` apuntando a su sucesor. Otro hilo puede haber leído `curr` antes del borrado y necesitar ese enlace para continuar recorriendo la lista. El borrado cambia `pred.next` para saltear `curr`, pero no modifica `curr.next`.
 
-Si despues de tomar los locks nos damos cuanta que `edgeExists` es falso, vamos a volver a recorrer la lista sin tomar locks hasta encontrar nuestros objetivos y bloquearlos y verificar. Potencialmente podrían todo el tiempo modificar los elementos que queremos modificar por lo que nuestro metodo no es wait-free, porque depende de las ejecuciones de los demas para poder terminar. 
+Si después de tomar los locks nos damos cuanta que `edgeExists` es falso, vamos a volver a recorrer la lista sin tomar locks hasta encontrar nuestros objetivos y bloquearlos y verificar. Potencialmente podrían todo el tiempo modificar los elementos que queremos modificar por lo que nuestro método no es wait-free, porque depende de las ejecuciones de los demás para poder terminar. 
 
 # Ejercicio 5
 El campo `marked` de la clase `Node` indica que el nodo ya fue removido lógicamente, aunque todavía no se haya actualizado el puntero del anterior para sacarlo de la lista.
