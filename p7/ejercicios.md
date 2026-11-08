@@ -531,3 +531,124 @@ La fórmula no es válida, para la traza $\{b\}, (\emptyset)^\omega$ se cumple e
 Es satisfacible, por ejemplo para $(\{b\})^\omega$ se cumple, ya que $b$ vale en la posición inicial, entonces $a\,\mathbf{U}\,b$ se cumple de inmediato y vale el consecuente.
 
 No es válida, para la traza $\emptyset, (\{b\})^\omega$ se cumple el antecedente porque eventualmente ocurre $b$ (en la posición siguiente a la inicial), pero es falso el consecuente porque $b$ no vale en la posición inicial, y para que valga $a\,\mathbf{U}\,b$ tendría que valer $a$ en la posición inicial, que es el único instante anterior a la primera aparición de $b$, y ahí no vale $a$.
+
+# Ejercicio 7 
+
+### a) Exclusión mutua: un solo thread está en la sección crítica a la vez
+$\Box\neg(critical_1 \land critical_2)$
+
+### b) Permanencia finita: ningún thread se queda en la sección crítica para siempre.
+$\neg\Diamond\Box critical_1 \land \neg\Diamond\Box critical_2$
+
+### c) Ausencia de inanición: si un thread pide el lock, eventualmente entra a la sección crítica.
+$\Box(request_1 \rightarrow \Diamond critical_1) \land \Box(request_2 \rightarrow \Diamond critical_2)$
+
+### d) Acceso alternado: los threads se turnan estrictamente para entrar a la sección crítica.
+Supongo que $critical_i$ sigue valiendo en el instante en que vale $release_i$ (el thread llama a `unlock()` desde dentro de la sección crítica), por eso el $\mathbf{U}$ se evalúa desde la posición siguiente.
+
+$\Box\big(release_1 \rightarrow \bigcirc(\neg critical_1 \,\mathbf{U}\, critical_2)\big) \land \Box\big(release_2 \rightarrow \bigcirc(\neg critical_2 \,\mathbf{U}\, critical_1)\big)$
+
+### e) Si el thread 1 pide el lock infinitas veces, entra a la sección crítica infinitas veces.
+$\Box\Diamond request_1 \rightarrow \Box\Diamond critical_1$
+
+### f) Si a partir de algún momento el thread 1 pide el lock sin parar, entra a la sección crítica
+infinitas veces.
+$\Diamond\Box request_1 \rightarrow \Box\Diamond critical_1$
+
+### g) Mientras el thread 1 espera, el thread 2 entra a la sección crítica a lo sumo una vez.
+
+TODO
+
+# Ejercicio 8
+
+### $\varphi \,\mathbf{N}\, \psi$ ("en el próximo"): la próxima vez que vale $\psi$, también vale $\varphi$.
+$\varphi \,\mathbf{N}\, \psi \equiv \neg\psi \,\mathbf{W}\, (\varphi \land \psi) \equiv (\neg\psi \,\mathbf{U}\, (\varphi \land \psi)) \lor \Box\neg\psi$
+
+### $\varphi \,\mathbf{M}\, \psi$ ("mientras"): $\varphi$ vale al menos mientras valga $\psi$.
+
+$\varphi \,\mathbf{M}\, \psi \equiv \varphi \,\mathbf{W}\, \neg\psi \equiv (\varphi \,\mathbf{U}\, \neg\psi) \lor \Box\varphi$
+
+### $\varphi \,\mathbf{B}\, \psi$ ("antes"): si $\psi$ vale alguna vez, $\varphi$ vale antes.
+
+$\varphi \,\mathbf{B}\, \psi \equiv \neg\psi \,\mathbf{W}\, (\varphi \land \neg\psi) \equiv (\neg\psi \,\mathbf{U}\, (\varphi \land \neg\psi)) \lor \Box\neg\psi$
+
+Supongo que "antes" es estricto: si $\psi$ vale alguna vez, $\varphi$ tiene que haber valido en un instante anterior a la primera aparición de $\psi$ (no alcanza con que valgan en el mismo instante).
+
+# Ejercicio 9 
+$\Box\big((\neg held \,\mathbf{U}\, held) \land (held \,\mathbf{U}\, \neg held)\big)$
+
+# Ejercicio 10 
+La unica componente terminal es el LTS completo, ya que desde cualquier estado se puede llegar a cualquier otro y tampoco hay estados sin salidas. 
+### $\Box(\text{TRYING} \rightarrow \Diamond\text{CRITICAL})$
+Sin fair choice no vale, es una propiedad de liveness, así que el contraejemplo es un lazo. La ejecución
+$\text{IDLE}\,(\text{TRYING}\,\text{BACKOFF})^\omega$ no cumple con la propiedad.
+
+Con fair choice vale: Toda ejecución justa termina en una componente terminal y la recorre entera infinitas veces. Como la única es el LTS completo, la ejecución pasa infinitas veces por $\text{CRITICAL}$, es decir, vale $\Box\Diamond\text{CRITICAL}$. Entonces, desde cualquier posición (en particular desde las que valen $\text{TRYING}$) hay un $\text{CRITICAL}$ más adelante, y $\Box(\text{TRYING} \rightarrow \Diamond\text{CRITICAL})$ vale.
+
+El contraejemplo anterior no es justo: visita $\text{TRYING}$ infinitas veces pero nunca toma su transición saliente $\text{acquire}$.
+
+### $\Box(\text{TRYING} \rightarrow \Diamond(\text{CRITICAL} \lor \text{IDLE}))$
+
+Sin fair choice no vale, al ser una propiedad de liveness un lazo es un contraejemplo. Un lazo posible puede ser: 
+$\text{IDLE}\,(\text{TRYING}\,\text{BACKOFF})^\omega$ el cual no cumple con la propiedad.
+
+Con fair choice si que vale, porque toda ejecucion justa termina en una componente terminal y la recorre entera infinitas veces. Como la unica es el LTS completo, la ejecucion pasa infinitas veces por $\text{CRITICAL}$ y por $\text{IDLE}$, es decir, vale $\Box\Diamond\text{CRITICAL}$ y $\Box\Diamond\text{IDLE}$, y $\Box(\text{TRYING} \rightarrow \Diamond(\text{CRITICAL} \lor \text{IDLE}))$ vale. 
+
+
+### $\Box(\text{BACKOFF} \rightarrow \Box\neg\text{CRITICAL})$
+
+No vale, ni con ni sin fair choice. Es una propiedad de safety, así que el contraejemplo es un prefijo finito:
+$\text{IDLE}\,\text{TRYING}\,\text{BACKOFF}\,\text{TRYING}\,\text{CRITICAL}$
+En la posición 3 vale $\text{BACKOFF}$, pero en la posición 5 vale $\text{CRITICAL}$, por lo que $\Box\neg\text{CRITICAL}$ falla en la posición 3.
+
+### $\Box(\text{BACKOFF} \rightarrow \Diamond\text{TRYING})$
+
+Vale, tanto con fair choice como sin ella. Es una propiedad de liveness, así que un contraejemplo tendría que ser un lazo en el que, desde alguna posición con $\text{BACKOFF}$, nunca vuelve a valer $\text{TRYING}$. Ese lazo no existe:
+
+- Desde $\text{BACKOFF}$ solo hay dos transiciones: $retry$, que va a $\text{TRYING}$, y $giveup$, que va a $\text{IDLE}$.
+- Si toma $retry$, llega a $\text{TRYING}$ y se cumple.
+- Si toma $giveup$, llega a $\text{IDLE}$, y desde $\text{IDLE}$ la única transición es $request$, que va a $\text{TRYING}$.
+- $\text{BACKOFF}$ no tiene lazo sobre sí mismo y ningún estado del camino es un estado sin salidas, así que la ejecución no puede quedarse sin pasar por $\text{TRYING}$.
+
+Como toda ejecución que pasa por $\text{BACKOFF}$ llega a $\text{TRYING}$ en a lo sumo dos pasos, la propiedad vale para todas las ejecuciones, justas o no. Fair choice no hace falta: el protocolo mismo obliga a volver a $\text{TRYING}$.
+
+# Ejercicio 11 
+```mermaid
+flowchart LR
+    S1["1: sin lock<br/>(inicial)"]
+    S2["2: con lock"]
+    E["E: error"]
+
+    S1 -- "acquire" --> S2
+    S2 -- "release" --> S1
+
+    S1 -. "use (sin lock)" .-> E
+    S2 -. "acquire (doble)" .-> E
+
+    S1 -- "release" --> S1
+    S2 -- "use" --> S2
+
+    E -- "acquire" --> E
+    E -- "use" --> E
+    E -- "release" --> E
+
+    style S1 stroke:#4a6cf7,stroke-width:3px
+    style E stroke:#d33,stroke-width:3px
+    linkStyle 2,3 stroke:#d33,stroke-width:2px,color:#d33
+```
+
+Defino "nadie usa el recurso sin haberlo adquirido" como: antes del primer use hay un acquire, y después de cada release no hay use hasta el próximo acquire:
+
+$\text{acquire} \,\mathbf{B}\, \text{use} \;\land\; \Box(\text{release} \rightarrow \bigcirc(\text{acquire} \,\mathbf{B}\, \text{use}))$
+
+Expandiendo $\mathbf{B}$ y $\mathbf{W}$ como arriba, $\text{acquire} \,\mathbf{B}\, \text{use} \equiv (\neg\text{use} \,\mathbf{U}\, \text{acquire}) \lor \Box\neg\text{use}$.
+
+Defino "no hay dos acquire sin un release en el medio" como:
+
+$\Box(\text{acquire} \rightarrow \bigcirc(\neg\text{acquire} \,\mathbf{W}\, \text{release}))$
+
+Entonces el LTL es:
+
+$\big((\neg\text{use} \,\mathbf{U}\, \text{acquire}) \lor \Box\neg\text{use}\big) \land \Box\big(\text{release} \rightarrow \bigcirc((\neg\text{use} \,\mathbf{U}\, \text{acquire}) \lor \Box\neg\text{use})\big) \land \Box\big(\text{acquire} \rightarrow \bigcirc(\neg\text{acquire} \,\mathbf{W}\, \text{release})\big)$
+
+
