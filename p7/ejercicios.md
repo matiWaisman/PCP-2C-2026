@@ -423,3 +423,111 @@ Esta versión no puede quedar bloqueada. Si un proceso intenta recibir antes de 
     - No vale para $i = 2$, por lo que no vale, en esa posicion no vale ni $p$ ni $q$.
 - $\sigma_4 = \{p\}\,\emptyset\,(\{p,q\}\,\{p\}\,\emptyset)^\omega$: **No vale.**
     - No vale para $i = 2$ porque no se cumple ni $p$ ni $q$ en esa posicion, por lo que no se cumple.
+
+# Ejercicio 5
+### 1. $\Diamond(\varphi \land \psi) \equiv \Diamond\varphi \land \Diamond\psi$
+
+*Eventualmente ocurre $\varphi \land \psi$ equivale a que eventualmente ocurre $\varphi$ y eventualmente ocurre $\psi$*
+
+Es falso, para la traza $(\{\varphi\} \{\psi\})^\omega$ se cumple $\Diamond\varphi \land \Diamond\psi$ pero no se cumple $\Diamond(\varphi \land \psi)$ porque nunca ocurren las dos a la vez. 
+
+### 2. $\Box(\varphi \land \psi) \equiv \Box\varphi \land \Box\psi$
+
+Es verdadero. Sea $\sigma$ una traza cualquiera. Demuestro que $\sigma \models \Box(\varphi \land \psi)$ si y solo si $\sigma \models \Box\varphi \land \Box\psi$.
+
+**($\Rightarrow$)** Supongamos $\sigma \models \Box(\varphi \land \psi)$. Entonces para todo $i \geq 0$, $\sigma, i \models \varphi \land \psi$, y en particular $\sigma, i \models \varphi$ y $\sigma, i \models \psi$. Luego $\sigma \models \Box\varphi$ y $\sigma \models \Box\psi$, es decir, $\sigma \models \Box\varphi \land \Box\psi$.
+
+**($\Leftarrow$)** Supongamos $\sigma \models \Box\varphi \land \Box\psi$. Entonces para todo $i \geq 0$, $\sigma, i \models \varphi$ y $\sigma, i \models \psi$, es decir, $\sigma, i \models \varphi \land \psi$. Luego $\sigma \models \Box(\varphi \land \psi)$.
+
+
+### 3. $\bigcirc\Diamond\varphi \equiv \Diamond\bigcirc\varphi$
+*En la segunda posición se cumple eventualmente $\varphi$ equivale a que existe una posición cuya siguiente cumple $\varphi$*
+
+Es verdadero. Sea $\sigma$ una traza cualquiera (posiciones numeradas desde 1). Vale la siguiente cadena de equivalencias:
+
+$\sigma \models \bigcirc\Diamond\varphi$
+
+$\iff \sigma, 2 \models \Diamond\varphi$ (semántica de $\bigcirc$)
+
+$\iff$ existe $j \geq 2$ tal que $\sigma, j \models \varphi$ (semántica de $\Diamond$)
+
+$\iff$ existe $x \geq 1$ tal que $\sigma, x+1 \models \varphi$ (cambio de variable $x = j-1$)
+
+$\iff$ existe $x \geq 1$ tal que $\sigma, x \models \bigcirc\varphi$ (semántica de $\bigcirc$)
+
+$\iff \sigma \models \Diamond\bigcirc\varphi$ (semántica de $\Diamond$)
+
+### 4. $\Box\Diamond\varphi \rightarrow \Box\Diamond\psi \equiv \Box(\varphi \rightarrow \Diamond\psi)$
+
+*Siempre se cumple eventualmente $\varphi$ implica que siempre se cumple eventualmente $\psi$ equivale a siempre se cumple que si vale $\varphi$ entonces eventualmente vale $\psi$*.
+ 
+Es falso. Para la traza $\sigma = \{\varphi\}, (\emptyset)^\omega$:
+
+- Vale $\Box\Diamond\varphi \rightarrow \Box\Diamond\psi$, porque el antecedente es falso: $\varphi$ solo ocurre en la posición 1, por lo que en la posición 2 no vale $\Diamond\varphi$ y entonces $\sigma \not\models \Box\Diamond\varphi$.
+- No vale $\Box(\varphi \rightarrow \Diamond\psi)$, porque en la posición 1 vale $\varphi$ pero $\psi$ no ocurre nunca, entonces $\sigma, 1 \not\models \varphi \rightarrow \Diamond\psi$.
+
+
+### 5. $\Box\varphi \rightarrow \Diamond\psi \equiv \varphi \,\mathbf{U}\, (\psi \lor \neg\varphi)$
+
+*Si siempre ocurre $\varphi$ entonces eventualmente ocurre $\psi$ equivale a que en algún momento ocurre $\psi \lor \neg\varphi$ (es decir, ocurre $\psi$ o deja de valer $\varphi$), y hasta entonces (sin incluirlo) vale $\varphi$*.
+
+**Reescritura de $\Box\varphi \rightarrow \Diamond\psi$:**
+
+$\Box\varphi \rightarrow \Diamond\psi$
+
+$\equiv \neg\Box\varphi \lor \Diamond\psi$ (definición de $\rightarrow$)
+
+$\equiv \Diamond\neg\varphi \lor \Diamond\psi$ (dualidad: $\neg\Box\varphi \equiv \Diamond\neg\varphi$)
+
+$\equiv \Diamond(\neg\varphi \lor \psi)$ ($\Diamond$ distribuye sobre $\lor$)
+
+Por lo tanto, basta probar que $\Diamond(\psi \lor \neg\varphi) \equiv \varphi \,\mathbf{U}\, (\psi \lor \neg\varphi)$.
+
+**Prueba de $\Diamond(\psi \lor \neg\varphi) \equiv \varphi \,\mathbf{U}\, (\psi \lor \neg\varphi)$:** sea $\sigma$ una traza cualquiera (posiciones numeradas desde 1).
+
+**($\Leftarrow$)** Supongamos $\sigma \models \varphi \,\mathbf{U}\, (\psi \lor \neg\varphi)$. Por semántica de $\mathbf{U}$, existe $j \geq 1$ tal que $\sigma, j \models \psi \lor \neg\varphi$. Luego $\sigma \models \Diamond(\psi \lor \neg\varphi)$.
+
+**($\Rightarrow$)** Supongamos $\sigma \models \Diamond(\psi \lor \neg\varphi)$. Entonces existe $j \geq 1$ tal que $\sigma, j \models \psi \lor \neg\varphi$. Sea $j_0$ el mínimo de esos $j$. Entonces $\sigma, j_0 \models \psi \lor \neg\varphi$, y para todo $k$ con $1 \leq k < j_0$ vale $\sigma, k \not\models \psi \lor \neg\varphi$, es decir $\sigma, k \models \neg\psi \land \varphi$, por lo que $\sigma, k \models \varphi$. Luego $\sigma \models \varphi \,\mathbf{U}\, (\psi \lor \neg\varphi)$.
+
+Por lo tanto $\Box\varphi \rightarrow \Diamond\psi \equiv \Diamond(\psi \lor \neg\varphi) \equiv \varphi \,\mathbf{U}\, (\psi \lor \neg\varphi)$.
+
+# Ejercicio 6
+
+### a) $\bigcirc\bigcirc a \rightarrow \bigcirc a$
+
+Es satisfacible, por ejemplo para la traza $(\{a\})^\omega$ se cumple, pero no es válida porque por ejemplo para la traza $\emptyset, \emptyset, \{a\}, (\emptyset)^\omega$ no se cumple.
+
+### b) $\bigcirc(a \lor \Diamond a) \rightarrow \Diamond a$
+
+Es satisfacible, por ejemplo para la traza $(\{a\})^\omega$ se cumple, ya que $a$ vale en la posición 2 y por lo tanto valen antecedente y consecuente.
+
+Es válida. Sea $\sigma$ una traza cualquiera  y supongamos que $\sigma \models \bigcirc(a \lor \Diamond a)$, es decir, $\sigma, 2 \models a \lor \Diamond a$. Si $\sigma, 2 \models a$, existe una posición donde vale $a$, luego $\sigma \models \Diamond a$. Si $\sigma, 2 \models \Diamond a$, existe $j \geq 2$ con $\sigma, j \models a$, y como $j \geq 1$, vale $\sigma \models \Diamond a$. En ambos casos se cumple el consecuente, por lo tanto la implicación vale en toda traza.
+
+### c) $\Box a \rightarrow \neg\bigcirc(\neg a \land \Box\neg a)$
+
+Reescribimos el lado derecho:
+
+$\neg\bigcirc(\neg a \land \Box\neg a)$
+
+$\equiv \bigcirc\neg(\neg a \land \Box\neg a)$ ($\neg\bigcirc\varphi \equiv \bigcirc\neg\varphi$)
+
+$\equiv \bigcirc(a \lor \neg\Box\neg a)$ (De Morgan y doble negación)
+
+$\equiv \bigcirc(a \lor \Diamond a)$ (dualidad: $\neg\Box\neg a \equiv \Diamond a$)
+
+Es válida. Sea $\sigma$ una traza cualquiera y supongamos que $\sigma \models \Box a$. Por definición de $\Box$, $a$ vale en todas las posiciones de $\sigma$. En particular vale en la posición siguiente a la inicial, por lo tanto en esa posición vale $a \lor \Diamond a$, es decir, $\sigma \models \bigcirc(a \lor \Diamond a)$. Como el lado derecho es equivalente a $\bigcirc(a \lor \Diamond a)$, se cumple el consecuente, por lo tanto la implicación vale en toda traza.
+
+Es satisfacible, ya que toda fórmula válida es satisfacible.
+
+
+### d) $(\Box a)\,\mathbf{U}\,(\Diamond b) \rightarrow \Box(a\,\mathbf{U}\,\Diamond b)$
+
+La fórmula es satisfacible, por ejemplo para $(\{a,b\})^\omega$ se cumplen ambos lados. El antecedente vale porque $\Diamond b$ vale en la posición inicial (ahí vale $b$), y el consecuente vale porque $b$ vale en todas las posiciones, entonces $\Diamond b$ vale en todas y por lo tanto $a\,\mathbf{U}\,\Diamond b$ también.
+
+La fórmula no es válida, para la traza $\{b\}, (\emptyset)^\omega$ se cumple el antecedente porque $\Diamond b$ vale en la posición inicial (ahí vale $b$), y como no hay posiciones anteriores no hace falta que valga $\Box a$. En cambio no vale el consecuente: en la posición siguiente a la inicial $b$ no vale ni valdrá nunca, entonces $\Diamond b$ es falso ahí y no vale $a\,\mathbf{U}\,\Diamond b$, por lo tanto no vale que para toda posición se cumpla $a\,\mathbf{U}\,\Diamond b$.
+
+### e) $\Diamond b \rightarrow (a\,\mathbf{U}\,b)$
+
+Es satisfacible, por ejemplo para $(\{b\})^\omega$ se cumple, ya que $b$ vale en la posición inicial, entonces $a\,\mathbf{U}\,b$ se cumple de inmediato y vale el consecuente.
+
+No es válida, para la traza $\emptyset, (\{b\})^\omega$ se cumple el antecedente porque eventualmente ocurre $b$ (en la posición siguiente a la inicial), pero es falso el consecuente porque $b$ no vale en la posición inicial, y para que valga $a\,\mathbf{U}\,b$ tendría que valer $a$ en la posición inicial, que es el único instante anterior a la primera aparición de $b$, y ahí no vale $a$.
