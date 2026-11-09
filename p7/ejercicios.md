@@ -651,4 +651,449 @@ Entonces el LTL es:
 
 $\big((\neg\text{use} \,\mathbf{U}\, \text{acquire}) \lor \Box\neg\text{use}\big) \land \Box\big(\text{release} \rightarrow \bigcirc((\neg\text{use} \,\mathbf{U}\, \text{acquire}) \lor \Box\neg\text{use})\big) \land \Box\big(\text{acquire} \rightarrow \bigcirc(\neg\text{acquire} \,\mathbf{W}\, \text{release})\big)$
 
+# Ejercicio 12
+Siendo el codigo: 
 
+```
+int s = 1
+bool y[2] = {false, false}
+
+thread p (i = 0):                         thread q (i = 1):
+loop {                                    loop {
+  p1: noncritical()                         q1: noncritical()
+  p2: (y[0], s) = (true, 0)                 q2: (y[1], s) = (true, 1)
+  p3: await (!y[1] || s == 0)               q3: await (!y[0] || s == 1)
+  p4: critical()                            q4: critical()
+  p5: y[0] = false                          q5: y[1] = false
+}                                         }
+```
+
+El LTS va a ser: 
+
+```mermaid
+flowchart LR
+    n1["p2,q2<br/>s=1, FF"]
+    n2["p3,q2<br/>s=0, TF"]
+    n3["p2,q3<br/>s=1, FT"]
+    n4["p4,q2<br/>s=0, TF"]
+    n5["p3,q3<br/>s=1, TT"]
+    n6["p3,q3<br/>s=0, TT"]
+    n7["p2,q4<br/>s=1, FT"]
+    n8["p5,q2<br/>s=0, TF"]
+    n9["p4,q3<br/>s=1, TT"]
+    n10["p3,q4<br/>s=1, TT"]
+    n11["p4,q3<br/>s=0, TT"]
+    n12["p3,q4<br/>s=0, TT"]
+    n13["p2,q5<br/>s=1, FT"]
+    n14["p2,q2<br/>s=0, FF"]
+    n15["p5,q3<br/>s=1, TT"]
+    n16["p4,q4<br/>s=1, TT"]
+    n17["p3,q5<br/>s=1, TT"]
+    n18["p5,q3<br/>s=0, TT"]
+    n19["p4,q4<br/>s=0, TT"]
+    n20["p3,q5<br/>s=0, TT"]
+    n21["p5,q4<br/>s=1, TT"]
+    n22["p4,q5<br/>s=1, TT"]
+    n23["p3,q2<br/>s=1, TF"]
+    n24["p2,q3<br/>s=0, FT"]
+    n25["p5,q4<br/>s=0, TT"]
+    n26["p4,q5<br/>s=0, TT"]
+    n27["p5,q5<br/>s=1, TT"]
+    n28["p4,q2<br/>s=1, TF"]
+    n29["p2,q4<br/>s=0, FT"]
+    n30["p5,q5<br/>s=0, TT"]
+    n31["p5,q2<br/>s=1, TF"]
+    n32["p2,q5<br/>s=0, FT"]
+
+    n1 -- p2 --> n2
+    n1 -- q2 --> n3
+    n2 -- p3 --> n4
+    n2 -- q2 --> n5
+    n3 -- p2 --> n6
+    n3 -- q3 --> n7
+    n4 -- p4 --> n8
+    n4 -- q2 --> n9
+    n5 -- q3 --> n10
+    n6 -- p3 --> n11
+    n7 -- p2 --> n12
+    n7 -- q4 --> n13
+    n8 -- p5 --> n14
+    n8 -- q2 --> n15
+    n9 -- p4 --> n15
+    n9 -- q3 --> n16
+    n10 -- q4 --> n17
+    n11 -- p4 --> n18
+    n12 -- p3 --> n19
+    n12 -- q4 --> n20
+    n13 -- p2 --> n20
+    n13 -- q5 --> n1
+    n14 -- p2 --> n2
+    n14 -- q2 --> n3
+    n15 -- p5 --> n3
+    n15 -- q3 --> n21
+    n16 -- p4 --> n21
+    n16 -- q4 --> n22
+    n17 -- q5 --> n23
+    n18 -- p5 --> n24
+    n19 -- p4 --> n25
+    n19 -- q4 --> n26
+    n20 -- p3 --> n26
+    n20 -- q5 --> n2
+    n21 -- p5 --> n7
+    n21 -- q4 --> n27
+    n22 -- p4 --> n27
+    n22 -- q5 --> n28
+    n23 -- p3 --> n28
+    n23 -- q2 --> n5
+    n24 -- p2 --> n6
+    n24 -- q3 --> n29
+    n25 -- p5 --> n29
+    n25 -- q4 --> n30
+    n26 -- p4 --> n30
+    n26 -- q5 --> n4
+    n27 -- p5 --> n13
+    n27 -- q5 --> n31
+    n28 -- p4 --> n31
+    n28 -- q2 --> n9
+    n29 -- p2 --> n12
+    n29 -- q4 --> n32
+    n30 -- p5 --> n32
+    n30 -- q5 --> n8
+    n31 -- p5 --> n1
+    n31 -- q2 --> n15
+    n32 -- p2 --> n20
+    n32 -- q5 --> n14
+
+    style n1 stroke:#4a6cf7,stroke-width:3px
+    style n16 stroke:#d33,stroke-width:3px
+    style n19 stroke:#d33,stroke-width:3px
+```
+
+Para LTL los estados van a ser: $\text{noncritical}_i$, $\text{wait}_i$, $\text{critical}_i$ y $\text{release}_i$.
+
+Exclusion mutua va a ser: $\Box\neg(\text{critical}_0 \land \text{critical}_1)$
+
+Ausencia de inanicion, asumiendo que non critical siempre termina: 
+
+$\Box\Diamond\text{critical}_0 \land \Box\Diamond\text{critical}_1$
+
+Exclusion mutua no se cumple, un contraejemplo es la traza: 
+
+Ejecución (transiciones: $p2$, $p3$, $q2$, $q3$). Cada estado es $(pc_p, pc_q, s, y[0]y[1])$:
+
+$(p2, q2, s{=}1, FF)\ \xrightarrow{p2}\ (p3, q2, s{=}0, TF)\ \xrightarrow{p3}\ (p4, q2, s{=}0, TF)\ \xrightarrow{q2}\ (p4, q3, s{=}1, TT)\ \xrightarrow{q3}\ (p4, q4, s{=}1, TT)$
+
+Traza (proposiciones que valen en cada posición):
+
+$\{\text{noncritical}_0, \text{noncritical}_1\}\ \{\text{wait}_0, \text{noncritical}_1\}\ \{\text{critical}_0, \text{noncritical}_1\}\ \{\text{critical}_0, \text{wait}_1\}\ \{\text{critical}_0, \text{critical}_1\}\ \cdots$
+
+En la posición 5 valen $\text{critical}_0$ y $\text{critical}_1$ a la vez, así que $\Box\neg(\text{critical}_0 \land \text{critical}_1)$ falla en la posición 1. El prefijo ya refuta la fórmula, sin importar cómo siga la ejecución. Fair choice no cambia nada, ya que solo descarta comportamientos infinitos y este contraejemplo es finito.
+
+Sin fair choice no vale ausencia de inanicion. Es una propiedad de liveness, así que el contraejemplo es un lazo (la otra mitad de la fórmula es simétrica):
+
+tramo: $(p2,q2,1,FF) \xrightarrow{q2} (p2,q3,1,FT) \xrightarrow{p2} (p3,q3,0,TT)$
+
+vuelta: $(p3,q3,0,TT) \xrightarrow{p3} (p4,q3,0,TT) \xrightarrow{p4} (p5,q3,0,TT) \xrightarrow{p5} (p2,q3,0,FT) \xrightarrow{p2} (p3,q3,0,TT)$
+
+En toda la vuelta vale $\text{wait}_1$ y nunca $\text{critical}_1$. Este lazo no es justo: visita $(p2,q3,0,FT)$ infinitas veces y nunca toma $q3$, que está habilitada ahí.
+
+Con fair choice vale. Toda ejecución justa termina en una componente terminal y la recorre entera infinitas veces. El LTS es fuertemente conexo y no tiene estados sin salidas, así que la única componente terminal son los 32 estados. Contiene estados con $\text{critical}_0$ y con $\text{critical}_1$, por lo que valen $\Box\Diamond\text{critical}_0$ y $\Box\Diamond\text{critical}_1$. Entonces, desde cualquier posición con $\text{wait}_i$ hay un $\text{critical}_i$ más adelante.
+
+# Ejercicio 13 
+```
+int y1 = 0, y2 = 0
+
+thread p (thread 1):                      thread q (thread 2):
+loop {                                    loop {
+  p1: noncritical()                         q1: noncritical()
+  p2: y1 = y2 + 1                           q2: y2 = y1 + 1
+  p3: await (y2 == 0 || y1 < y2)            q3: await (y1 == 0 || y2 < y1)
+  p4: critical()                            q4: critical()
+  p5: y1 = 0                                q5: y2 = 0
+}                                         }
+```
+
+El LTS va a ser: 
+
+```mermaid
+flowchart LR
+    n1["p2,q2<br/>y1=0, y2=0"]
+    n2["p3,q2<br/>y1=1, y2=0"]
+    n3["p2,q3<br/>y1=0, y2=1"]
+    n4["p4,q2<br/>y1=1, y2=0"]
+    n5["p3,q3<br/>y1=1, y2=2"]
+    n6["p3,q3<br/>y1=2, y2=1"]
+    n7["p2,q4<br/>y1=0, y2=1"]
+    n8["p5,q2<br/>y1=1, y2=0"]
+    n9["p4,q3<br/>y1=1, y2=2"]
+    n10["p3,q4<br/>y1=2, y2=1"]
+    n11["p2,q5<br/>y1=0, y2=1"]
+    n12["p5,q3<br/>y1=1, y2=2"]
+    n13["p3,q5<br/>y1=2, y2=1"]
+    n14["p2,q3<br/>y1=0, y2=2"]
+    n15["p3,q2<br/>y1=2, y2=0"]
+    n16["p2,q4<br/>y1=0, y2=2"]
+    n17["p4,q2<br/>y1=2, y2=0"]
+    n18["p2,q5<br/>y1=0, y2=2"]
+    n19["p5,q2<br/>y1=2, y2=0"]
+
+    n1 -- p2 --> n2
+    n1 -- q2 --> n3
+    n2 -- p3 --> n4
+    n2 -- q2 --> n5
+    n3 -- p2 --> n6
+    n3 -- q3 --> n7
+    n4 -- p4 --> n8
+    n4 -- q2 --> n9
+    n5 -- p3 --> n9
+    n6 -- q3 --> n10
+    n7 -- p2 --> n10
+    n7 -- q4 --> n11
+    n8 -- p5 --> n1
+    n8 -- q2 --> n12
+    n9 -- p4 --> n12
+    n10 -- q4 --> n13
+    n11 -- p2 --> n13
+    n11 -- q5 --> n1
+    n12 -- p5 --> n14
+    n13 -- q5 --> n15
+    n14 -- q3 --> n16
+    n15 -- p3 --> n17
+    n16 -- q4 --> n18
+    n17 -- p4 --> n19
+    n18 -- q5 --> n1
+    n19 -- p5 --> n1
+
+    style n1 stroke:#4a6cf7,stroke-width:3px
+```
+
+El patron para que los `y` puedan valer mas que 2 es una traza del estilo: 
+
+### Traza infinita
+
+| Paso | Transición | Estado resultante (`pc_p, pc_q` \| `y1, y2`) |
+|---|---|---|
+| 0 | (inicial) | `p2,q2 \| 0, 0` |
+| 1 | `p2`: `y1 = y2 + 1` | `p3,q2 \| 1, 0` |
+| 2 | `q2`: `y2 = y1 + 1` | `p3,q3 \| 1, 2` |
+| 3 | `p3`: `await (y2 == 0 \|\| y1 < y2)` (1 < 2) | `p4,q3 \| 1, 2` |
+| 4 | `p4`: `critical()` | `p5,q3 \| 1, 2` |
+| 5 | `p5`: `y1 = 0` | `p2,q3 \| 0, 2` |
+| 6 | `p2`: `y1 = y2 + 1` | `p3,q3 \| 3, 2` |
+| 7 | `q3`: `await (y1 == 0 \|\| y2 < y1)` (2 < 3) | `p3,q4 \| 3, 2` |
+| 8 | `q4`: `critical()` | `p3,q5 \| 3, 2` |
+| 9 | `q5`: `y2 = 0` | `p3,q2 \| 3, 0` |
+| 10 | `q2`: `y2 = y1 + 1` | `p3,q3 \| 3, 4` |
+| 11 | `p3`: `await (y2 == 0 \|\| y1 < y2)` (3 < 4) | `p4,q3 \| 3, 4` |
+| 12 | `p4`: `critical()` | `p5,q3 \| 3, 4` |
+| 13 | `p5`: `y1 = 0` | `p2,q3 \| 0, 4` |
+| 14 | `p2`: `y1 = y2 + 1` | `p3,q3 \| 5, 4` |
+| ... | se repite desde el paso 7 | `p3,q3 \| 7, 6`, `p3,q3 \| 9, 8`, ... |
+
+Los pasos 7 a 14 forman un ciclo en los `pc` (de `p3,q3` a `p3,q3`) donde los valores suben en 2. El estado en `p3,q3` es `y1 = 2k+1, y2 = 2k`, con k = 1, 2, 3, ... Nunca se repite, así que el LTS completo tiene infinitos estados.
+
+Traza como secuencia de etiquetas:
+
+`p2, q2, p3, p4, p5, p2, (q3, q4, q5, q2, p3, p4, p5, p2)^ω`
+
+Para LTL los estados van a ser: $\text{noncritical}_i$, $\text{wait}_i$, $\text{critical}_i$ y $\text{release}_i$.
+
+Exclusion mutua va a ser: $\Box\neg(\text{critical}_0 \land \text{critical}_1)$
+
+Ausencia de inanicion: 
+$\Box\Diamond\text{critical}_0 \land \Box\Diamond\text{critical}_1$
+
+Ausencia de Deadlock: TODO
+
+Exclusion mutua se cumple porque ningún estado del LTS tiene `p4` y `q4` a la vez. Para entrar a `p4` hace falta `y2 = 0 ∨ y1 < y2`, y para entrar a `q4` hace falta `y1 = 0 ∨ y2 < y1`. Si ambos tuvieran `y ≠ 0`, las dos condiciones serían `y1 < y2` e `y2 < y1`, que no pueden valer juntas.
+
+Ausencia de inanicion asumiendo un scheduler fair se cumple porque todo el LTS forma la misma componente terminal, por lo que podemos asumir que se va a pasar por todos los estados infinitas veces. 
+
+Ausencia de Deadlock: TODO. 
+
+# Ejercicio 14 
+Si no tienen buffer los LTS de cada uno van a ser: 
+
+Cliente 1:
+
+```mermaid
+flowchart LR
+    A((A)) -->|"req.1"| B((B))
+    B -->|"resp.1"| C1((C1))
+    C1 -->|"use.1"| A
+```
+
+Cliente 2:
+
+```mermaid
+flowchart LR
+    A((A)) -->|"req.2"| B((B))
+    B -->|"resp.2"| C2((C2))
+    C2 -->|"use.2"| A
+```
+
+Servidor:
+
+```mermaid
+flowchart LR
+    S0((S0)) -->|"req.1"| S1((S1))
+    S0 -->|"req.2"| S2((S2))
+    S1 -->|"resp.1"| S0
+    S2 -->|"resp.2"| S0
+```
+
+La composicion va a ser: 
+
+```mermaid
+flowchart LR
+    s0(("A,A,S0")) -->|"req.1"| s1(("B,A,S1"))
+    s0 -->|"req.2"| s2(("A,B,S2"))
+
+    s1 -->|"resp.1"| s3(("C1,A,S0"))
+    s2 -->|"resp.2"| s4(("A,C2,S0"))
+
+    s3 -->|"use.1"| s0
+    s3 -->|"req.2"| s5(("C1,B,S2"))
+
+    s4 -->|"use.2"| s0
+    s4 -->|"req.1"| s6(("B,C2,S1"))
+
+    s5 -->|"use.1"| s2
+    s5 -->|"resp.2"| s7(("C1,C2,S0"))
+
+    s6 -->|"use.2"| s1
+    s6 -->|"resp.1"| s7
+
+    s7 -->|"use.1"| s4
+    s7 -->|"use.2"| s3
+```
+
+Ahora si `requests` es un buffer rendeavouz y `responses` tiene capacidad 1: 
+
+Buffer:
+
+```mermaid
+flowchart TB
+    Vacio((Vacio)) -->|"envia 1"| Lleno1((Lleno1))
+    Vacio -->|"envia 2"| Lleno2((Lleno2))
+    Lleno1 -->|"1 recibe 1"| Vacio
+    Lleno1 -->|"2 recibe 1"| Vacio
+    Lleno2 -->|"1 recibe 2"| Vacio
+    Lleno2 -->|"2 recibe 2"| Vacio
+```
+
+Cliente 1:
+
+```mermaid
+flowchart LR
+    Ok((Ok)) -->|"1 pide"| Esperando((Esperando))
+    Mal((Mal)) -->|"1 pide"| Esperando
+    Esperando -->|"1 recibe 1"| Ok
+    Esperando -->|"1 recibe 2"| Mal
+```
+
+Cliente 2:
+
+```mermaid
+flowchart LR
+    Ok((Ok)) -->|"2 pide"| Esperando((Esperando))
+    Mal((Mal)) -->|"2 pide"| Esperando
+    Esperando -->|"2 recibe 2"| Ok
+    Esperando -->|"2 recibe 1"| Mal
+```
+
+Servidor:
+
+```mermaid
+flowchart LR
+    Libre((Libre)) -->|"1 pide"| Atiende1((Atiende1))
+    Libre -->|"2 pide"| Atiende2((Atiende2))
+    Atiende1 -->|"envia 1"| Libre
+    Atiende2 -->|"envia 2"| Libre
+```
+
+El LTS de la composicion va a ser: 
+
+```mermaid
+flowchart TB
+    n0(("O,O,Lb,V"))
+    n1(("E,O,A1,V"))
+    n2(("O,E,A2,V"))
+    n3(("E,O,Lb,L1"))
+    n4(("O,E,Lb,L2"))
+    n5(("E,E,A2,L1"))
+    n6(("E,E,A1,L2"))
+    n7(("E,M,A2,V"))
+    n8(("M,E,A1,V"))
+    n9(("E,M,Lb,L2"))
+    n10(("M,E,Lb,L1"))
+    n11(("M,M,Lb,V"))
+    n12(("E,E,A2,L2"))
+    n13(("E,E,A1,L1"))
+    n14(("E,M,A1,V"))
+    n15(("M,E,A2,V"))
+    n16(("E,O,A2,V"))
+    n17(("O,E,A1,V"))
+    n18(("E,M,Lb,L1"))
+    n19(("M,E,Lb,L2"))
+    n20(("E,O,Lb,L2"))
+    n21(("O,E,Lb,L1"))
+    n22(("O,M,Lb,V"))
+    n23(("M,O,Lb,V"))
+
+    n0 -->|"1 pide"| n1
+    n0 -->|"2 pide"| n2
+    n1 -->|"envia 1"| n3
+    n2 -->|"envia 2"| n4
+    n3 -->|"1 recibe 1"| n0
+    n3 -->|"2 pide"| n5
+    n4 -->|"2 recibe 2"| n0
+    n4 -->|"1 pide"| n6
+    n5 -->|"1 recibe 1"| n2
+    n5 -->|"2 recibe 1"| n7
+    n6 -->|"1 recibe 2"| n8
+    n6 -->|"2 recibe 2"| n1
+    n7 -->|"envia 2"| n9
+    n8 -->|"envia 1"| n10
+    n9 -->|"1 recibe 2"| n11
+    n9 -->|"2 pide"| n12
+    n10 -->|"2 recibe 1"| n11
+    n10 -->|"1 pide"| n13
+    n11 -->|"1 pide"| n14
+    n11 -->|"2 pide"| n15
+    n12 -->|"1 recibe 2"| n15
+    n12 -->|"2 recibe 2"| n16
+    n13 -->|"1 recibe 1"| n17
+    n13 -->|"2 recibe 1"| n14
+    n14 -->|"envia 1"| n18
+    n15 -->|"envia 2"| n19
+    n16 -->|"envia 2"| n20
+    n17 -->|"envia 1"| n21
+    n18 -->|"1 recibe 1"| n22
+    n18 -->|"2 pide"| n5
+    n19 -->|"2 recibe 2"| n23
+    n19 -->|"1 pide"| n6
+    n20 -->|"1 recibe 2"| n23
+    n20 -->|"2 pide"| n12
+    n21 -->|"2 recibe 1"| n22
+    n21 -->|"1 pide"| n13
+    n22 -->|"1 pide"| n14
+    n22 -->|"2 pide"| n2
+    n23 -->|"1 pide"| n1
+    n23 -->|"2 pide"| n15
+
+    classDef malo fill:#f66,stroke:#900,color:#000
+    class n7,n8,n9,n10,n11,n14,n15,n18,n19,n22,n23 malo
+```
+
+Para definir las proposiciones en LTL, los estados van a ser OK_i para cuando un cliente no mando nada o recibio su mensaje correctamente, Esperando_i cuando envio un mensaje y esta esperando respuesta y Mal_i cuando recibe una respuesta incorrecta. 
+
+Para la propiedad de que cada cliente recibe siempre la
+respuesta a su propio pedido, basta con pedir que nunca se este en un estado de mal, entonces: $\Box \neg mal_1 \land \Box \neg mal_2$
+
+Para que todo cliente que manda un pedido termina recibiendo
+una respuesta: $\Box (\mathit{esperando}_i \rightarrow \Diamond (\mathit{ok}_i \lor \mathit{mal}_i))$.
+
+Para la primer version, la primer propiedad se cumple, porque no es alcanzable un estado en el cual o el 1 reciba response 2 o que el 2 reciba response 1 por la composicion de LTS. La segunda propiedad si el scheduler es unfair no se cumple, si es fair se cumple porque forma todo parte de la misma componente terminal por lo que se va a psar infinitamente por todos los estados, pasando por alguno en el que ambos reciben respuestas eventualmente. 
+
+Para la segunda version la primer propiedad no vale porque es posible llegar a estados en el cual se recibe la respuesta cacheada del otro. La segunda propiedad vale con un scheduler fair. 
