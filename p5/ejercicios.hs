@@ -6,6 +6,7 @@ import Control.Concurrent.STM
 import Control.Concurrent.Async
 import System.IO
 import Data.Maybe (isJust)
+import Control.Monad (forever)
 
 
 -- Ejercicio 1 
@@ -97,12 +98,10 @@ acquireSem :: TVar(Int) -> STM()
 acquireSem permisos = do 
     valor <- readTVar permisos 
     check (valor > 0)
-    writeTVar permisos (valor - 1)
+    modifyTVar' permisos ((-) 1)
 
 releaseSem :: TVar(Int) -> STM()
-releaseSem permisos = do 
-    valor <- readTVar permisos 
-    writeTVar permisos (valor + 1)
+releaseSem permisos = modifyTVar' permisos (+ 1)
 
 demoSemaforo :: IO ()
 demoSemaforo = do 
@@ -110,9 +109,10 @@ demoSemaforo = do
     semaforo <- newTVarIO 0
     consumidor <- async $ do
         putStrLn ("Soy el consumidor 1 y todavia no lei nada ")
-        atomically $ do
+        atomically (do
             acquireSem semaforo
             acquireSem semaforo
+            )
         putStrLn ("Soy el consumidor 1 y ya tome los dos permisos ")
 
     consumidor2 <- async $ do
@@ -143,85 +143,89 @@ demoSemaforo = do
     return()
      
 -- Ejercicio 3 
-empezarAJugar :: TVar(Int) -> STM()
-empezarAJugar capacidad = do 
-    valor <- readTVar capacidad 
-    writeTVar capacidad (valor + 1)
+data Juego = Juego {
+    capacidad :: (TVar Int),
+    bolitas :: (TVar Int) 
+}
 
-terminarDeJugar :: TVar Int -> TVar Int -> STM ()
-terminarDeJugar bolsa capacidad = do
-    bolitas <- readTVar bolsa
-    generadores <- readTVar capacidad
-    check (generadores > 0 && bolitas <= generadores - 1)
-    writeTVar capacidad (generadores - 1)
+empezarAJugar :: Juego -> STM()
+empezarAJugar juego = modifyTVar' (capacidad juego) (+ 1)  
 
-consumir :: TVar Int -> STM Int
-consumir bolsa = do
-    bolitas <- readTVar bolsa
-    check (bolitas >= 2)
-    writeTVar bolsa (bolitas - 2)
+terminarDeJugar :: Juego -> STM ()
+terminarDeJugar juego = do
+    cantidadBolitas <- readTVar (bolitas juego)
+    generadores <- readTVar (capacidad juego)
+    check (generadores > 0 && cantidadBolitas <= generadores - 1)
+    writeTVar (capacidad juego) (generadores - 1)
+
+consumir :: Juego -> STM Int
+consumir juego = do
+    cantidadBolitas <- readTVar (bolitas juego)
+    check (cantidadBolitas >= 2)
+    writeTVar (bolitas juego) (cantidadBolitas - 2)
     return 1
 
-producir :: TVar Int -> TVar Int -> STM Int
-producir bolsa capacidad = do
-    bolitas <- readTVar bolsa
-    generadores <- readTVar capacidad
-    check (bolitas < generadores)
-    writeTVar bolsa (bolitas + 1)
+producir :: Juego -> STM Int
+producir juego = do
+    cantidadBolitas <- readTVar (bolitas juego)
+    generadores <- readTVar (capacidad juego)
+    check (cantidadBolitas < generadores)
+    writeTVar (bolitas juego) (cantidadBolitas + 1)
     return 1
 
 demoBolitas :: IO ()
 demoBolitas = do
     hSetBuffering stdout LineBuffering
-    capacidad <- newTVarIO 0
+    capacidadInicial <- newTVarIO 0
     bolsa <- newTVarIO 0
+    let juego = Juego { capacidad = capacidadInicial, bolitas = bolsa }
 
     generador1 <- async $ do
-        atomically (empezarAJugar capacidad)
+        atomically (empezarAJugar juego)
         putStrLn "A entro al juego"
         threadDelay 100000
-        atomically (producir bolsa capacidad)
+        atomically (producir juego)
         putStrLn "A produjo su primera bolita"
         putStrLn "A intenta producir otra bolita"
-        atomically (producir bolsa capacidad)
+        atomically (producir juego)
         putStrLn "A produjo su segunda bolita: tiene 2 puntos"
 
     generador2 <- async $ do
-        atomically (empezarAJugar capacidad)
+        atomically (empezarAJugar juego)
         putStrLn "B entro al juego"
         threadDelay 100000
-        atomically (producir bolsa capacidad)
+        atomically (producir juego)
         putStrLn "B produjo su primera bolita"
         putStrLn "B intenta producir otra bolita"
-        atomically (producir bolsa capacidad)
+        atomically (producir juego)
         putStrLn "B produjo su segunda bolita"
         threadDelay 100000
-        atomically (producir bolsa capacidad)
+        atomically (producir juego)
         putStrLn "B produjo su tercera bolita: tiene 3 puntos"
 
     consumidor1 <- async $ do
         threadDelay 500000
         putStrLn "X intenta consumir un par"
-        atomically (consumir bolsa)
+        atomically (consumir juego)
         putStrLn "X consumio un par: tiene 1 punto"
 
     consumidor2 <- async $ do
         threadDelay 500000
         putStrLn "Y intenta consumir un par"
-        atomically (consumir bolsa)
+        atomically (consumir juego)
         putStrLn "Y consumio su primer par"
         threadDelay 200000
         putStrLn "Y intenta consumir otro par"
-        atomically (consumir bolsa)
+        atomically (consumir juego)
         putStrLn "Y consumio su segundo par: tiene 2 puntos"
 
     generador3 <- async $ do
         threadDelay 200000
-        atomically (empezarAJugar capacidad)
+        atomically (empezarAJugar juego)
         putStrLn "C entro: ahora hay 3 generadores"
-        atomically (producir bolsa capacidad)
+        atomically (producir juego)
         putStrLn "C produjo una bolita: tiene 1 punto. Intenta retirarse"
-        atomically (terminarDeJugar bolsa capacidad)
+        atomically (terminarDeJugar juego)
         putStrLn "C pudo retirarse"
 
     wait consumidor1
@@ -231,9 +235,11 @@ demoBolitas = do
     wait generador3
 
     -- A y B permanecen registrados hasta que termina el consumo.
-    atomically (terminarDeJugar bolsa capacidad)
-    atomically (terminarDeJugar bolsa capacidad)
+    atomically (terminarDeJugar juego)
+    atomically (terminarDeJugar juego)
     putStrLn "A y B se retiraron. Fin: se produjeron 6 bolitas y se consumieron 3 pares"
+
+
 
 -- Ejercicio 4
 data Mesa = Mesa {
@@ -241,6 +247,10 @@ data Mesa = Mesa {
     hayPapel :: Bool, 
     hayFosforos :: Bool
 }
+
+nuevaMesa :: STM Mesa 
+nuevaMesa = do 
+    return (Mesa False False False)
 
 tabaco :: TVar Mesa -> STM ()
 tabaco disp = do 
@@ -260,11 +270,12 @@ fosforos disp = do
     check (hayTabaco valores && hayPapel valores)
     writeTVar disp (Mesa False False False)
 
-nuevaMesa :: STM Mesa 
-nuevaMesa = do 
-    return (Mesa False False False)
-
-
+proovedor :: TVar Mesa -> Mesa -> STM ()
+proovedor mesa nuevosValoresMesa = do 
+    valores <- readTVar mesa 
+    check (not (hayTabaco valores) && not (hayPapel valores) && not (hayFosforos valores))
+    writeTVar mesa nuevosValoresMesa
+    return() 
 
 -- Ejercicio 5
 data Barra = Barra {
@@ -294,6 +305,90 @@ tomarComida barra = do
           | chicas > 1 ->
                 writeTVar barra (Barra (chicas - 2) grandes)
           | otherwise -> retry
+
+demoPizzeria :: IO()
+demoPizzeria = do
+    hSetBuffering stdout LineBuffering
+    barra <- newTVarIO (Barra {cantidadChicas = 0, cantidadGrandes = 0})
+
+    let mostrarEstado estado =
+            show (cantidadGrandes estado) ++ " grandes y "
+            ++ show (cantidadChicas estado) ++ " chicas"
+
+        depositar nombre pizza operacion = do
+            estado <- atomically $ do
+                operacion
+                readTVar barra
+            putStrLn (nombre ++ " deposito " ++ pizza
+                      ++ ". Barra tras el deposito: " ++ mostrarEstado estado)
+
+        comer nombre = do
+            putStrLn (nombre ++ " intenta comer; espera si no hay una grande ni dos chicas")
+            (eleccion, estado) <- atomically $ do
+                antes <- readTVar barra
+                tomarComida barra
+                despues <- readTVar barra
+                let pizza = if cantidadGrandes antes > 0
+                            then "una grande"
+                            else "dos chicas"
+                return (pizza, despues)
+            putStrLn (nombre ++ " tomo " ++ eleccion
+                      ++ ". Barra tras el consumo: " ++ mostrarEstado estado)
+
+    -- Cada pizza se deposita en una transaccion distinta.
+    pizzero1 <- async $ do
+        putStrLn "Pizzero 1 empieza a cocinar una grande y dos chicas"
+        threadDelay 100000
+        depositar "Pizzero 1" "una grande" (depositarGrande barra)
+        threadDelay 150000
+        depositar "Pizzero 1" "una chica" (depositarChica barra)
+        threadDelay 150000
+        depositar "Pizzero 1" "otra chica" (depositarChica barra)
+
+    pizzero2 <- async $ do
+        putStrLn "Pizzero 2 empieza a cocinar tres chicas"
+        threadDelay 200000
+        depositar "Pizzero 2" "una chica" (depositarChica barra)
+        threadDelay 150000
+        depositar "Pizzero 2" "otra chica" (depositarChica barra)
+        threadDelay 150000
+        depositar "Pizzero 2" "su tercera chica" (depositarChica barra)
+
+    pizzero3 <- async $ do
+        putStrLn "Pizzero 3 empieza a cocinar dos grandes y una chica"
+        threadDelay 300000
+        depositar "Pizzero 3" "una grande" (depositarGrande barra)
+        threadDelay 150000
+        depositar "Pizzero 3" "una chica" (depositarChica barra)
+        threadDelay 150000
+        depositar "Pizzero 3" "otra grande" (depositarGrande barra)
+
+    -- Los clientes compiten por la comida; no hay un orden de atencion.
+    cliente1 <- async $ do
+        comer "Cliente 1"
+        threadDelay 200000
+        comer "Cliente 1 (segunda visita)"
+
+    cliente2 <- async $ do
+        comer "Cliente 2"
+        threadDelay 100000
+        comer "Cliente 2 (segunda visita)"
+
+    cliente3 <- async $ do
+        comer "Cliente 3"
+        threadDelay 300000
+        comer "Cliente 3 (segunda visita)"
+
+    wait pizzero1
+    wait pizzero2
+    wait pizzero3
+    wait cliente1
+    wait cliente2
+    wait cliente3
+
+    estadoFinal <- atomically (readTVar barra)
+    putStrLn ("Fin de la demo: se produjeron 3 grandes y 6 chicas, "
+              ++ "y se atendieron 6 pedidos. Barra final: " ++ mostrarEstado estadoFinal)
 
 -- Ejercicio 6
 -- Version con lista
@@ -379,9 +474,7 @@ encolarP (ColaPrioridad colaAlta colaMedia colaBaja) e prio = do
 tieneElementos :: Cola a -> STM(Bool)
 tieneElementos (Cola referencia) = do 
     elementos <- readTVar referencia 
-    case elementos of 
-        [] -> return False 
-        (_:_) -> return True 
+    return (length elementos > 0)
 
 desencolarP :: ColaPrioridad a -> STM a
 desencolarP (ColaPrioridad colaAlta colaMedia colaBaja) = do 
@@ -407,12 +500,14 @@ acquireLectura :: RWLock -> STM ()
 acquireLectura (RWLock referenciaCantidadLectores referenciaHayEscritor) = do 
     cantidadLectores <- readTVar referenciaCantidadLectores
     hayEscritor <- readTVar referenciaHayEscritor
-    check(hayEscritor == False)
+    check(not hayEscritor)
     writeTVar referenciaCantidadLectores (cantidadLectores + 1)
 
 releaseLectura :: RWLock -> STM ()
-releaseLectura (RWLock referenciaCantidadLectores _) = do 
+releaseLectura (RWLock referenciaCantidadLectores referenciaHayEscritor) = do 
     cantidadLectores <- readTVar referenciaCantidadLectores 
+    hayEscritor <- readTVar referenciaHayEscritor
+    check (not hayEscritor)
     writeTVar referenciaCantidadLectores (cantidadLectores - 1)
 
 acquireEscritura :: RWLock -> STM ()
@@ -423,7 +518,9 @@ acquireEscritura (RWLock referenciaCantidadLectores referenciaHayEscritor) = do
     writeTVar referenciaHayEscritor True
 
 releaseEscritura :: RWLock -> STM ()
-releaseEscritura (RWLock _ referenciaHayEscritor) = do 
+releaseEscritura (RWLock referenciaCantidadLectores referenciaHayEscritor) = do 
+    cantidadLectores <- readTVar referenciaCantidadLectores
+    check (cantidadLectores == 0)
     writeTVar referenciaHayEscritor False
 
 threadLectura :: RWLock -> IO()
@@ -460,3 +557,72 @@ demoRWLock = do
     wait escritor
 
 -- Ejercicio 9
+type Tenedores = TVar [Bool] 
+
+iesimoValor :: [a] -> Int -> a 
+iesimoValor (x:_) 0 = x 
+iesimoValor (x:xs) i = iesimoValor xs (i - 1)
+
+ponerValor :: [a] -> a -> Int -> [a]
+ponerValor (_:xs) e 0 = e:xs 
+ponerValor (x:xs) e i = x:(ponerValor xs e (i-1)) 
+
+-- Precondicion la posicion que me pasan esta entre 0 y 4 
+tomarTenedor :: Tenedores -> Int -> STM ()
+tomarTenedor referenciaTenedores i = do 
+    tenedores <- readTVar referenciaTenedores
+    check (not (iesimoValor tenedores i))
+    writeTVar referenciaTenedores (ponerValor tenedores True i)
+    return()
+
+-- Precondicion la posicion que me pasan esta entre 0 y 4 
+dejarTenedor :: Tenedores -> Int -> STM ()
+dejarTenedor referenciaTenedores i = do 
+    tenedores <- readTVar referenciaTenedores
+    check ((iesimoValor tenedores i))
+    writeTVar referenciaTenedores (ponerValor tenedores False i)
+    return()
+
+pensar :: Int -> IO ()
+pensar i = do 
+    putStrLn ("El filosofo " ++ show i ++ " piensa")
+    threadDelay 500000
+
+comer :: Int -> IO ()
+comer i = do 
+    putStrLn ("El filosofo " ++ show i ++ " come")
+    threadDelay 500000
+
+-- Precondicion su posición esta entre 0 y 4 
+filosofo :: Int -> Tenedores -> IO ()
+filosofo i referenciaTenedores = forever $ do 
+    pensar i 
+    putStrLn ("El filosofo " ++ show i ++ " trata de agarrar los tenedores "
+              ++ show i ++ " y " ++ show ((i + 1) `mod` 5))
+    atomically $ do 
+        tomarTenedor referenciaTenedores i 
+        tomarTenedor referenciaTenedores ((i + 1) `mod` 5)
+    
+    putStrLn ("El filosofo " ++ show i ++ " agarra los tenedores "
+              ++ show i ++ " y " ++ show ((i + 1) `mod` 5))
+
+    comer i 
+
+    putStrLn ("El filosofo " ++ show i ++ " trata de dejar los tenedores "
+              ++ show i ++ " y " ++ show ((i + 1) `mod` 5))
+    atomically $ do 
+        dejarTenedor referenciaTenedores i 
+        dejarTenedor referenciaTenedores ((i + 1) `mod` 5)
+    
+    putStrLn ("El filosofo " ++ show i ++ " deja los tenedores "
+              ++ show i ++ " y " ++ show ((i + 1) `mod` 5))
+
+demoFilosofos :: IO () 
+demoFilosofos = do 
+    hSetBuffering stdout LineBuffering
+    referenciaTenedores <- newTVarIO [False, False, False, False, False]
+    filosofos <- mapM (\i -> async (filosofo i referenciaTenedores)) [0..4]
+    mapM_ wait filosofos
+    return()
+
+    
