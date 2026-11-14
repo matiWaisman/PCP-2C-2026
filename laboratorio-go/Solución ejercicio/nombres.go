@@ -70,7 +70,11 @@ var nombres = []string{
 }
 
 func Nombres(canalNombres chan string) {
-	for i, nombre := range nombres{
+	// TODO - Parte 1
+	// Pista: como hay nombres repetidos, es recomendable enumerarlos para no tener problemas.
+	// Go tiene un Printf casi igual al de C :)
+	// fmt.Sprintf("(%d) %s", i, nombre)
+	for i, nombre := range nombres {
 		canalNombres <- fmt.Sprintf("(%d) %s", i, nombre)
 	}
 	close(canalNombres)

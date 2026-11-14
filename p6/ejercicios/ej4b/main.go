@@ -11,6 +11,7 @@ func Server(ch chan int, canalesClientes []chan int) {
 		var numero int = rand.Intn(11)
 		var juegoFinalizado bool = false
 		var intentos int = 0
+		// Le doy pie al cliente actual a que arranque a jugar
 		canalesClientes[i] <- 1
 		for !juegoFinalizado {
 			intentos += 1

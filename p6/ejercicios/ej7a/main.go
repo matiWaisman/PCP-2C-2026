@@ -1,3 +1,17 @@
+/*
+Ejercicio 7 b)
+
+La solución sigue siendo correcta con comunicación asincrónica porque todos los
+pedidos se procesan secuencialmente desde un mismo canal FIFO. Cada lectura
+devuelve el valor de la última escritura procesada antes de ella y el cliente
+espera esa respuesta mediante un canal propio.
+
+Terminar de enviar una escritura no significa que el servidor ya la haya
+ejecutado, pero una lectura enviada después por el mismo canal será procesada
+después de esa escritura. Otros clientes pueden intercalar escrituras.
+Si se quisiera garantizar que la escritura fue ejecutada antes de que el cliente
+continúe, sería necesario agregar una confirmación del servidor.
+*/
 package main
 
 import (

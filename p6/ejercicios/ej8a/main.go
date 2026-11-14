@@ -35,6 +35,7 @@ func Timer2(frecuencia int, canales []chan struct{}) {
 					// Se pudo enviar
 					pendientes[i] -= 1
 				default:
+					// El buffer esta lleno, asi que no perdemos tiempo y seguimos con el resto
 					sigo = false
 				}
 			}
